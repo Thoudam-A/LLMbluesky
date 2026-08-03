@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 )
 import bluesky as bs
 from bluesky.ui.qtgl.customevents import ACDataEvent
+from bluesky.ui.qtgl.evaluation_bridge import EvaluationEventBridge
 
 
 FT_PER_METER = 3.280839895
@@ -208,6 +209,7 @@ class AiAssistPanel(QWidget):
         self.log_path = None
         self.latest_sim_time = None
         self.last_detect_wall_ts = 0.0
+        self.evaluation_bridge = EvaluationEventBridge(self.SCENARIO_NAME)
         self._connected_net = None
         self._last_status_update_ts = 0.0
         self._last_execution_update_ts = 0.0
@@ -950,6 +952,7 @@ class AiAssistPanel(QWidget):
         record.setdefault("wall_time", datetime.now().isoformat(timespec="seconds"))
         with self.log_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=True) + "\n")
+        self.evaluation_bridge.publish(record)
 
     def _add_row(self, event, aircraft, cpa, decision, command, status):
         if event in {"spawn", "sector", "control"}:

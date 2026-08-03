@@ -165,3 +165,20 @@ bluesky_project/requirements.txt
 ```
 
 建议使用 Python 虚拟环境安装依赖后运行。
+
+## 管制指令模仿精度评估平台
+
+仓库内已包含独立的Web评估入口、本地任务服务、上海进近冻结回放适配、指令序列评分器及PyQt异步事件桥。默认页面不展示历史结果，只有完成一次新评估后才加载该次运行产物。
+
+快速启动：
+
+```powershell
+.\start_evaluation_platform.cmd
+```
+
+首次使用需配置本地数据与模型路径。完整说明见：
+
+```text
+evaluation_platform/README.md
+docs/IMITATION_EVALUATION_PLATFORM.md
+```

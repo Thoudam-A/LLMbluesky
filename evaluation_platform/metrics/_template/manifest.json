@@ -1,0 +1,13 @@
+{
+  "metric_id": "replace_me",
+  "name": "新指标名称",
+  "group": "replace_group",
+  "version": "0.1.0",
+  "status": "planned",
+  "primary_metric": "primary_value",
+  "runner": "runner.py",
+  "scorer": "scorer.py",
+  "required_inputs": [],
+  "views": ["summary"],
+  "claim_boundary": "填写该指标的结果适用边界"
+}

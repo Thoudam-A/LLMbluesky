@@ -31,3 +31,10 @@ bluesky_project/data/graphics/world.jpg
 
 # Logs
 *.log
+
+# Local evaluation configuration and artifacts
+evaluation_platform/config/catalog.json
+evaluation_data/
+evaluation_models/
+output/
+tests/_evaluation_platform_runs/

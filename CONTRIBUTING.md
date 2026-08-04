@@ -31,3 +31,10 @@
 - 所有动作 ID 必须来自候选动作集合；
 - 安全验证失败时不得展示为可执行指令；
 - GUI fallback 不能替代 headless safety evidence。
+
+## Evaluation Metrics
+
+Add a metric as an isolated directory under `evaluation_platform/metrics/`.
+Each metric must declare its inputs and claim boundary in `manifest.json`, write
+its results to disk, and include success, empty-input, and failure tests.
+Do not commit local catalogs, datasets, model weights, or evaluation outputs.

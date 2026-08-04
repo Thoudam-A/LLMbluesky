@@ -44,3 +44,6 @@ bluesky_project/data/graphics/world.jpg
 # Local evaluation data catalogs and credentials
 .env.*
 /evaluation_platform/config/catalog.json
+/evaluation_data/
+/evaluation_models/
+/tests/_evaluation_platform_runs/

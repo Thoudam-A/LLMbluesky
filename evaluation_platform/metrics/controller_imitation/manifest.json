@@ -1,0 +1,18 @@
+{
+  "metric_id": "controller_imitation",
+  "name": "管制指令模仿精度",
+  "group": "decision_consistency",
+  "version": "1.0.0",
+  "status": "ready",
+  "primary_metric": "controller_imitation_macro_recall",
+  "runner": "evaluation_scripts/run_shanghai_program_policy_replay.py",
+  "scorer": "evaluation_scripts/score_seu_imitation.py",
+  "required_inputs": [
+    "frozen_state",
+    "historical_instruction",
+    "flight_plan",
+    "procedure"
+  ],
+  "views": ["summary", "details", "breakdown", "error_analysis"],
+  "claim_boundary": "历史态势冻结回放下的指令一致性评估，不是运行安全证明"
+}

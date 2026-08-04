@@ -1,0 +1,25 @@
+{
+  "datasets": [
+    {
+      "id": "shanghai_approach_test",
+      "name": "上海进近 · 冻结测试集",
+      "description": "历史标签只在评分阶段读取",
+      "reference_count": null,
+      "references": "${ATC_DATA_ROOT}\\reference_events.jsonl",
+      "replay": "${ATC_DATA_ROOT}\\shadow_replay.jsonl",
+      "trajectory_parquet": "${ATC_DATA_ROOT}\\rl_teacher_dataset.parquet",
+      "local_date": "2025-07-02"
+    }
+  ],
+  "models": [
+    {
+      "id": "program_policy",
+      "name": "程序感知决策策略",
+      "model": "${ATC_MODEL_ROOT}\\program_policy.joblib",
+      "config": "${ATC_MODEL_ROOT}\\program_policy.json",
+      "system_outputs": "${ATC_MODEL_ROOT}\\system_outputs.jsonl",
+      "archived_metric": "${ATC_MODEL_ROOT}\\metric_result.json",
+      "decision_threshold": 0.5
+    }
+  ]
+}

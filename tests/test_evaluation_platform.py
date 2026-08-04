@@ -38,10 +38,13 @@ class PortablePlatformTests(unittest.TestCase):
         self.assertIn("m", models)
         self.assertTrue(status["configured"])
 
-    def test_only_controller_imitation_is_registered(self):
+    def test_metric_registry_contains_the_three_ready_metrics(self):
         registry = MetricRegistry(ROOT / "evaluation_platform/metrics")
         registry.load()
-        self.assertEqual([x["metric_id"] for x in registry.public_items()], ["controller_imitation"])
+        self.assertEqual(
+            {x["metric_id"] for x in registry.public_items()},
+            {"controller_imitation", "dynamic_separation_adjustment", "command_execution_acceptance"},
+        )
 
     def test_default_web_page_has_no_metric_result_numbers(self):
         text = (ROOT / "evaluation_platform/static/index.html").read_text(encoding="utf-8")

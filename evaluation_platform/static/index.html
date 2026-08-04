@@ -74,8 +74,10 @@
       <aside class="catalog">
         <div class="catalog-head"><span class="eyebrow">METRIC REGISTRY</span><h2>评估指标库</h2><p>统一数据、运行、评分与证据接口，支持指标持续扩展。</p></div>
         <div class="suite">
-          <div class="group-title"><span>当前已注册</span><em>1 / 1</em></div>
+          <div class="group-title"><span>当前已注册</span><em>3 / 3</em></div>
           <button class="metric-item active"><span class="mi-icon">IM</span><span><strong>管制指令模仿精度</strong><small>历史态势冻结回放</small></span><span class="tag">可运行</span></button>
+          <button class="metric-item" type="button" onclick="location.href='hppo_metrics.html?metric=dynamic_separation_adjustment'"><span class="mi-icon">DS</span><span><strong>动态间隔调整成功率</strong><small>H-PPO 运行日志离线评分</small></span><span class="tag">可运行</span></button>
+          <button class="metric-item" type="button" onclick="location.href='hppo_metrics.html?metric=command_execution_acceptance'"><span class="mi-icon">CA</span><span><strong>管制指令执行接受度</strong><small>BlueSky 指令执行日志</small></span><span class="tag">可运行</span></button>
           <div class="extension-note"><b>指标扩展区</b>其他成员通过标准manifest、runner和scorer注册自己的指标；未完成注册的内容不会出现在本平台中。</div>
         </div>
         <button class="addmetric" id="addMetric">＋ 注册新指标</button>

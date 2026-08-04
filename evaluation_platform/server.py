@@ -136,6 +136,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(public_catalog())
             if path == "/api/metrics":
                 return self._json({"items": self.server.registry.public_items()})
+            if path == "/api/hppo/runs":
+                return self._json({"items": self.server.runs.available_hppo_runs()})
             if path == "/api/runs":
                 return self._json({"items": self.server.runs.list_runs()})
             if path == "/api/snapshot":

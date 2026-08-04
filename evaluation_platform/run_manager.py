@@ -18,6 +18,8 @@ from .catalog import DATASETS, MODELS, REPO_ROOT
 
 
 VALID_MODES = {"archived_result", "rescore_existing", "full_replay"}
+HPPO_METRIC_IDS = {"dynamic_separation_adjustment", "command_execution_acceptance"}
+HPPO_OUTPUT_ROOT = REPO_ROOT / "output" / "H_PPO"
 
 
 def sha256_file(path: Path) -> str:
@@ -42,6 +44,8 @@ class RunManager:
 
     def create(self, request: dict[str, Any]) -> dict[str, Any]:
         metric_id = str(request.get("metric_id", "controller_imitation"))
+        if metric_id in HPPO_METRIC_IDS:
+            return self._create_hppo_run(metric_id, request)
         dataset_id = str(request.get("dataset_id", "shanghai_approach_2025_07_02"))
         model_id = str(request.get("model_id", "program_policy_v12_recalibrated"))
         mode = str(request.get("mode", "rescore_existing"))
@@ -91,6 +95,51 @@ class RunManager:
             "stage": "queued",
             "progress": 0,
             "message": "任务已创建",
+            "created_at": config["created_at"],
+            "updated_at": config["created_at"],
+            "config": config,
+            "result_available": False,
+            "error": None,
+        }
+        with self._lock:
+            self._runs[run_id] = state
+        self._persist_state(run_id)
+        threading.Thread(target=self._execute, args=(run_id,), daemon=True).start()
+        return self.get(run_id)
+
+    def _create_hppo_run(self, metric_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        source_value = request.get("source_run")
+        if not source_value:
+            raise ValueError("source_run is required for H-PPO metrics")
+        source_run = Path(str(source_value)).expanduser().resolve()
+        try:
+            source_run.relative_to(HPPO_OUTPUT_ROOT.resolve())
+        except ValueError as exc:
+            raise ValueError("source_run must be inside output/H_PPO") from exc
+        if not source_run.is_dir():
+            raise FileNotFoundError(f"H-PPO run directory does not exist: {source_run}")
+        events = source_run / "events.jsonl"
+        if not events.exists():
+            raise FileNotFoundError(f"events.jsonl is required: {events}")
+        run_id = f"EV-{dt.datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6].upper()}"
+        run_dir = self.output_root / run_id
+        run_dir.mkdir(parents=True)
+        config = {
+            "run_id": run_id,
+            "metric_id": metric_id,
+            "mode": "hppo_archived_run",
+            "source_run": str(source_run),
+            "created_at": utc_now(),
+        }
+        (run_dir / "run_config.json").write_text(
+            json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        state = {
+            "run_id": run_id,
+            "status": "queued",
+            "stage": "queued",
+            "progress": 0,
+            "message": "H-PPO 离线评估任务已创建",
             "created_at": config["created_at"],
             "updated_at": config["created_at"],
             "config": config,
@@ -184,6 +233,9 @@ class RunManager:
     def _execute(self, run_id: str) -> None:
         try:
             config = self.get(run_id)["config"]
+            if config["metric_id"] in HPPO_METRIC_IDS:
+                self._execute_hppo_metric(run_id, config)
+                return
             dataset = DATASETS[config["dataset_id"]]
             model = MODELS[config["model_id"]]
             run_dir = self.output_root / run_id
@@ -272,3 +324,52 @@ class RunManager:
             self._set(run_id, status="cancelled", stage="cancelled", message="任务已取消")
         except Exception as exc:  # keep worker failure visible to the UI
             self._set(run_id, status="failed", stage="failed", message="评估失败", error=str(exc))
+
+    def _execute_hppo_metric(self, run_id: str, config: dict[str, Any]) -> None:
+        source_run = Path(config["source_run"])
+        run_dir = self.output_root / run_id
+        events = source_run / "events.jsonl"
+        diagnostics = next(
+            (source_run / name for name in ("validation_diagnostics.csv", "training_diagnostics.csv")
+             if (source_run / name).exists()),
+            None,
+        )
+        self._set(run_id, status="running", stage="validating", progress=10, message="正在校验 H-PPO 运行日志")
+        manifest = {
+            "source_run": str(source_run),
+            "inputs": [{"role": "events", "path": str(events), "size": events.stat().st_size}],
+        }
+        if diagnostics is not None:
+            manifest["inputs"].append({"role": "diagnostics", "path": str(diagnostics), "size": diagnostics.stat().st_size})
+        (run_dir / "input_manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        metric_id = config["metric_id"]
+        scorer = REPO_ROOT / "evaluation_platform" / "metrics" / metric_id / "scorer.py"
+        args = [sys.executable, str(scorer), "--events", str(events), "--output", str(run_dir / "metric_result.json")]
+        if metric_id == "dynamic_separation_adjustment":
+            if diagnostics is None:
+                raise FileNotFoundError("dynamic separation scoring requires validation_diagnostics.csv or training_diagnostics.csv")
+            args.extend(["--diagnostics", str(diagnostics)])
+        self._command(run_id, "scoring", 75, args)
+        hashes = {"run_id": run_id, "generated_at": utc_now(), "artifacts": []}
+        for path in sorted(run_dir.iterdir()):
+            if path.is_file() and path.name != "run_state.json":
+                hashes["artifacts"].append({"name": path.name, "size": path.stat().st_size, "sha256": sha256_file(path)})
+        (run_dir / "hashes.json").write_text(json.dumps(hashes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        self._set(run_id, status="complete", stage="complete", progress=100, message="评估完成", result_available=True)
+
+    @staticmethod
+    def available_hppo_runs() -> list[dict[str, str]]:
+        if not HPPO_OUTPUT_ROOT.exists():
+            return []
+        runs = []
+        for events in HPPO_OUTPUT_ROOT.rglob("events.jsonl"):
+            run_dir = events.parent
+            diagnostics = next((run_dir / name for name in ("validation_diagnostics.csv", "training_diagnostics.csv") if (run_dir / name).exists()), None)
+            runs.append({
+                "path": str(run_dir),
+                "name": str(run_dir.relative_to(HPPO_OUTPUT_ROOT)),
+                "has_diagnostics": "true" if diagnostics else "false",
+            })
+        return sorted(runs, key=lambda row: row["path"], reverse=True)

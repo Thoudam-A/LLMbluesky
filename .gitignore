@@ -32,9 +32,19 @@ bluesky_project/data/graphics/world.jpg
 # Logs
 *.log
 
-# Local evaluation configuration and artifacts
-evaluation_platform/config/catalog.json
-evaluation_data/
-evaluation_models/
-output/
-tests/_evaluation_platform_runs/
+# Local H-PPO training artifacts, checkpoints, and runtime stores
+/output/
+/artifacts/
+*.pt
+*.pth
+*.ckpt
+*.sqlite3
+*.sqlite3-*
+
+# Local evaluation configuration, data, models, and generated test artifacts
+.env.*
+/evaluation_platform/config/catalog.json
+/evaluation_data/
+/evaluation_models/
+/tests/_evaluation_platform_runs/
+/tests/_tmp_runtime/

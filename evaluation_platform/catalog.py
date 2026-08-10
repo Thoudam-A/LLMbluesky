@@ -43,7 +43,10 @@ def load_catalog(path: Path = DEFAULT_CATALOG) -> tuple[dict[str, dict], dict[st
         if not dataset_id or dataset_id in datasets:
             raise ValueError(f"invalid or duplicate dataset id: {dataset_id!r}")
         row = dict(item)
-        for key in ("references", "replay", "trajectory_parquet"):
+        for key in (
+            "references", "replay", "trajectory_parquet",
+            "controller_instructions", "intent_references",
+        ):
             if row.get(key):
                 row[key] = _resolve(str(row[key]), base)
         datasets[dataset_id] = row
@@ -52,7 +55,10 @@ def load_catalog(path: Path = DEFAULT_CATALOG) -> tuple[dict[str, dict], dict[st
         if not model_id or model_id in models:
             raise ValueError(f"invalid or duplicate model id: {model_id!r}")
         row = dict(item)
-        for key in ("model", "config", "system_outputs", "archived_metric"):
+        for key in (
+            "model", "config", "system_outputs", "archived_metric",
+            "intent_predictions",
+        ):
             if row.get(key):
                 row[key] = _resolve(str(row[key]), base)
         models[model_id] = row
@@ -84,6 +90,14 @@ def public_catalog() -> dict:
             "available": available,
             "full_replay_available": full_available,
             "missing_fields": sorted(set(missing + full_missing)),
+            "intent_available": _exists(item, ("controller_instructions", "intent_references"))[0],
+            "intent_missing_fields": _exists(item, ("controller_instructions", "intent_references"))[1],
+            "controller_instruction_file": (
+                Path(item["controller_instructions"]).name if item.get("controller_instructions") else None
+            ),
+            "intent_reference_file": (
+                Path(item["intent_references"]).name if item.get("intent_references") else None
+            ),
         })
     models = []
     for item in MODELS.values():
@@ -93,5 +107,10 @@ def public_catalog() -> dict:
             "name": item.get("name", item["id"]),
             "available": available,
             "missing_fields": missing,
+            "intent_available": _exists(item, ("intent_predictions",))[0],
+            "intent_missing_fields": _exists(item, ("intent_predictions",))[1],
+            "intent_prediction_file": (
+                Path(item["intent_predictions"]).name if item.get("intent_predictions") else None
+            ),
         })
     return {"datasets": datasets, "models": models, "configuration": CATALOG_STATUS}

@@ -360,7 +360,7 @@ class AiAssistPanel(QWidget):
         self.preference_combo.addItems(["altitude_first", "speed_first"])
         form.addRow("解脱偏好", self.preference_combo)
         self.min_sep_spin = QDoubleSpinBox(self)
-        self.min_sep_spin.setRange(3.0, 20.0)
+        self.min_sep_spin.setRange(3.0, 10.0)
         self.min_sep_spin.setDecimals(1)
         self.min_sep_spin.setSingleStep(0.5)
         self.min_sep_spin.setValue(self.HSEP_NM)
@@ -691,7 +691,7 @@ class AiAssistPanel(QWidget):
         option_row.addWidget(self.preference_combo)
         option_row.addWidget(QLabel("最小间隔"))
         self.min_sep_spin = QDoubleSpinBox(self)
-        self.min_sep_spin.setRange(3.0, 20.0)
+        self.min_sep_spin.setRange(3.0, 10.0)
         self.min_sep_spin.setDecimals(1)
         self.min_sep_spin.setSingleStep(0.5)
         self.min_sep_spin.setValue(self.HSEP_NM)
@@ -850,7 +850,11 @@ class AiAssistPanel(QWidget):
             "monitor_record": monitor_record,
         }
         head = command.strip().split(" ", 1)[0].upper()
-        if head in {"ALT", "SPD"}:
+        if head == "HPPO":
+            # Operator policy changes, such as HSEP, must not wait behind a
+            # backlog of flight-control commands.
+            self.command_queue.insert(0, item)
+        elif head in {"ALT", "SPD"}:
             insert_at = 0
             while insert_at < len(self.command_queue):
                 queued_head = self._queued_command(self.command_queue[insert_at]).strip().split(" ", 1)[0].upper()
@@ -934,7 +938,40 @@ class AiAssistPanel(QWidget):
             return
         if hasattr(net, "stream_received"):
             net.stream_received.connect(self.on_simstream_received)
+        if hasattr(net, "event_received"):
+            net.event_received.connect(self.on_hppo_event)
             self._connected_net = net
+
+    def on_hppo_event(self, eventname, eventdata, sender_id):
+        """Display events from the migrated H-PPO plugin without invoking the UI solver."""
+        name = eventname.decode("utf-8", errors="replace") if isinstance(eventname, bytes) else str(eventname)
+        if name != "HPPO_EVENT":
+            return
+        try:
+            if isinstance(eventdata, bytes):
+                eventdata = eventdata.decode("utf-8")
+            record = json.loads(eventdata) if isinstance(eventdata, str) else dict(eventdata)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return
+        event = str(record.get("event", "update"))
+        if event == "separation_updated" and hasattr(self, "min_sep_spin"):
+            horizontal_nm = float(record.get("horizontal_nm", self._min_hsep_nm()))
+            self.min_sep_spin.blockSignals(True)
+            self.min_sep_spin.setValue(horizontal_nm)
+            self.min_sep_spin.blockSignals(False)
+        episode = record.get("episode", "-")
+        sim_time = record.get("sim_time_s", 0.0)
+        if hasattr(self, "system_state"):
+            self.system_state.setText("H-PPO %s | ep %s | t %.1fs" % (event, episode, float(sim_time)))
+        acid = record.get("acid", "")
+        command = record.get("command", "")
+        detail = "H-PPO %s" % event
+        if acid:
+            detail += " %s" % acid
+        if command:
+            detail += ": %s" % command
+        self._log_text(detail)
+        self._append_log({"event": "hppo_plugin", "hppo": record})
 
     def _now(self):
         return datetime.now().strftime("%H:%M:%S")
@@ -1519,6 +1556,7 @@ class AiAssistPanel(QWidget):
         self._last_status_update_ts = 0.0
         self._append_log({"event": "min_separation_changed", "hsep_nm": float(value)})
         self._log_text("Min separation changed to %.1f NM; detector/verifier will use it from next cycle." % float(value))
+        self._stack("HPPO HSEP %.2f NM" % float(value))
         self._update_status_labels()
         if self.detect_timer.isActive():
             QTimer.singleShot(100, self.detect_and_resolve)

@@ -1,0 +1,13 @@
+{
+  "metric_id": "command_execution_acceptance",
+  "name": "管制指令执行接受度",
+  "group": "command_execution",
+  "version": "0.1.0",
+  "status": "ready",
+  "primary_metric": "command_execution_acceptance_rate",
+  "runner": "",
+  "scorer": "evaluation_platform/metrics/command_execution_acceptance/scorer.py",
+  "required_inputs": ["hppo_events"],
+  "views": ["summary", "details", "breakdown", "failure_analysis"],
+  "claim_boundary": "该指标仅衡量仿真中 BlueSky 对已提交管制指令的接口接受情况，不表示真实飞行员、机组或管制员的人因接受度。"
+}

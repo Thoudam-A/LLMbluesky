@@ -1,0 +1,13 @@
+{
+  "metric_id": "autonomous_command_response_time",
+  "name": "管制指令自主生成响应时间",
+  "group": "decision_response",
+  "version": "1.0.0",
+  "status": "ready",
+  "primary_metric": "weighted_mean_decision_response_ms",
+  "runner": "",
+  "scorer": "evaluation_platform/metrics/autonomous_command_response_time/scorer.py",
+  "required_inputs": ["hppo_episode_diagnostics"],
+  "views": ["summary", "episode_timeline", "scenario_breakdown", "claim_boundary"],
+  "claim_boundary": "从冲突状态送入决策步骤开始，到策略推理、参数化及 BlueSky 指令调用完成为止；不包含冲突检测、离线 LLM 生成、调度等待和航空器执行过程。"
+}

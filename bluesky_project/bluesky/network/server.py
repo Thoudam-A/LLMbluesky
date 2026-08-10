@@ -58,7 +58,14 @@ class Server(Thread):
     def addnodes(self, count=1):
         ''' Add [count] nodes to this server. '''
         for _ in range(count):
-            p = Popen([sys.executable, 'BlueSky.py', '--sim'])
+            command = [sys.executable, 'BlueSky.py', '--sim']
+            # Optional per-node config is needed by integrations such as
+            # H-PPO. It keeps the main UI configuration independent while
+            # ensuring spawned simulation nodes load the same sim plugin.
+            configfile = os.environ.get('BLUESKY_SIM_CONFIG_FILE', '').strip()
+            if configfile:
+                command.extend(['--config-file', configfile])
+            p = Popen(command)
             self.spawned_processes.append(p)
 
     def run(self):

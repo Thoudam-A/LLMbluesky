@@ -837,7 +837,8 @@ class Route:
 
             self.flag_landed_runway = True
 
-        print ("getnextwp:",self.wpname[self.iactwp],"   torta = ",self.wptorta[self.iactwp])
+        # `torta == -999` is the normal sentinel for a waypoint without an
+        # RTA. This legacy debug print is extremely noisy for H-PPO rollouts.
 
         return self.wplat[self.iactwp],self.wplon[self.iactwp],   \
                self.wpalt[self.iactwp],self.wpspd[self.iactwp],   \

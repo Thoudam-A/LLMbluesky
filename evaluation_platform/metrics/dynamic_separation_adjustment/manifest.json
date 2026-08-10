@@ -1,0 +1,13 @@
+{
+  "metric_id": "dynamic_separation_adjustment",
+  "name": "动态间隔调整成功率",
+  "group": "separation_management",
+  "version": "0.1.0",
+  "status": "ready",
+  "primary_metric": "dynamic_separation_adjustment_success_rate",
+  "runner": "",
+  "scorer": "evaluation_platform/metrics/dynamic_separation_adjustment/scorer.py",
+  "required_inputs": ["hppo_events", "hppo_episode_diagnostics"],
+  "views": ["summary", "details", "breakdown", "failure_analysis"],
+  "claim_boundary": "初版按一次运行内的水平间隔变更事件评分。成功表示变更后该回合安全结束，不等同于连续稳定达标或真实运行安全证明。"
+}

@@ -6,6 +6,8 @@
       "description": "历史标签只在评分阶段读取",
       "reference_count": null,
       "references": "${ATC_DATA_ROOT}\\reference_events.jsonl",
+      "controller_instructions": "${ATC_DATA_ROOT}\\controller_instructions.jsonl",
+      "intent_references": "${ATC_DATA_ROOT}\\intent_reference_events.jsonl",
       "replay": "${ATC_DATA_ROOT}\\shadow_replay.jsonl",
       "trajectory_parquet": "${ATC_DATA_ROOT}\\rl_teacher_dataset.parquet",
       "local_date": "2025-07-02"
@@ -20,6 +22,11 @@
       "system_outputs": "${ATC_MODEL_ROOT}\\system_outputs.jsonl",
       "archived_metric": "${ATC_MODEL_ROOT}\\metric_result.json",
       "decision_threshold": 0.5
+    },
+    {
+      "id": "intent_classifier",
+      "name": "管制意图分类模型",
+      "intent_predictions": "${ATC_MODEL_ROOT}\\intent_predictions.jsonl"
     }
   ]
 }

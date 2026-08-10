@@ -91,7 +91,7 @@ class EvaluationHTTPServer(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AtcEvaluation/0.1"
+    server_version = "AtcEvaluation/0.2"
 
     def log_message(self, fmt: str, *args) -> None:
         print(f"[{self.log_date_time_string()}] {fmt % args}")
@@ -131,11 +131,13 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             if path == "/api/health":
-                return self._json({"status": "ok", "service": "atc-evaluation", "version": "0.1.0", "time": now_utc(), "catalog": CATALOG_STATUS})
+                return self._json({"status": "ok", "service": "atc-evaluation", "version": "0.2.0", "time": now_utc(), "catalog": CATALOG_STATUS})
             if path == "/api/catalog":
                 return self._json(public_catalog())
             if path == "/api/metrics":
                 return self._json({"items": self.server.registry.public_items()})
+            if path == "/api/hppo/runs":
+                return self._json({"items": self.server.runs.available_hppo_runs()})
             if path == "/api/runs":
                 return self._json({"items": self.server.runs.list_runs()})
             if path == "/api/snapshot":

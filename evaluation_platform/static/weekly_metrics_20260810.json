@@ -1,0 +1,62 @@
+{
+  "report_date": "2026-08-10",
+  "controller_imitation": {
+    "counts": {
+      "matched_events": 382,
+      "reference_aircraft": 584,
+      "reference_events": 799,
+      "system_outputs": 784
+    },
+    "metrics": {
+      "controller_imitation_macro_recall": 0.536815,
+      "controller_imitation_micro_recall": 0.478098,
+      "system_command_precision": 0.487245,
+      "strict_parameter_macro_recall": 0.434503,
+      "parameter_accuracy_on_comparable_matches": 0.709424,
+      "command_inflation_ratio": 0.981227
+    },
+    "by_family": {
+      "altitude": {
+        "matched_count": 382,
+        "precision": 0.487245,
+        "recall": 0.521858,
+        "reference_count": 732,
+        "system_output_count": 784
+      },
+      "speed": {
+        "matched_count": 0,
+        "precision": null,
+        "recall": 0.0,
+        "reference_count": 67,
+        "system_output_count": 0
+      }
+    }
+  },
+  "intent_understanding": {
+    "counts": {
+      "utterances": 500,
+      "gold_intents": 669,
+      "false_negatives": 9,
+      "false_positives": 173
+    },
+    "metrics": {
+      "action_hit_rate": 0.8714499252615845,
+      "intent_type_f1": 0.8034188034188033,
+      "utterance_exact_type_set_accuracy": 0.602,
+      "full_intent_frame_accuracy": 0.351270553064275,
+      "intent_type_precision": 0.7171361502347418,
+      "intent_type_recall": 0.9133034379671151
+    },
+    "selected_types": {
+      "高度改变": {"reference_count": 153, "action_hits": 151, "action_accuracy": 0.9869281045751634},
+      "频率移交": {"reference_count": 91, "action_hits": 89, "action_accuracy": 0.978021978021978},
+      "雷达服务": {"reference_count": 85, "action_hits": 84, "action_accuracy": 0.9882352941176471},
+      "航向改变": {"reference_count": 63, "action_hits": 52, "action_accuracy": 0.8253968253968254},
+      "速度调整": {"reference_count": 19, "action_hits": 17, "action_accuracy": 0.8947368421052632}
+    }
+  },
+  "boundaries": {
+    "controller_imitation": "冻结历史态势离线回放的一致性，不等同于真实同场景复现或运行安全证明。",
+    "intent_understanding": "动作识别准确率仅评价动作槽位；评估不包含语音识别误差，完整意图框架还要求类型和参数同时正确。"
+  }
+}

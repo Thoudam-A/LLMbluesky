@@ -185,6 +185,10 @@ H-PPO日志评分器及PyQt异步事件桥。当前实现五项指标：
 [`docs/weekly_metrics_20260810/WEEKLY_METRICS_REPORT.md`](docs/weekly_metrics_20260810/WEEKLY_METRICS_REPORT.md)。
 该归档用于本周汇报，不会作为平台默认数值写死在界面中。
 
+供其他成员继续优化的代码入口、数据目录模板、外部工件哈希和优先任务见
+[`docs/handoff/METRIC_EVALUATION_HANDOFF_20260811.md`](docs/handoff/METRIC_EVALUATION_HANDOFF_20260811.md)。
+仓库还保留默认关闭的Qwen候选重排实验扩展；其当前受限实验没有提升模仿精度，不能替代默认基线。
+
 快速启动：
 
 ```powershell

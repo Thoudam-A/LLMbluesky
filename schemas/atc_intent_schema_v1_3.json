@@ -1,0 +1,195 @@
+{
+  "description": "Clean annotation policy for ATC instruction intent parsing. V1.3 separates intent-type annotation from full frame annotation.",
+  "version": "1.3",
+  "input_unit": "utterance",
+  "evaluation_units": {
+    "primary": "utterance-level multiset of intent_type",
+    "secondary": "intent_frame with action and slots"
+  },
+  "annotation_levels": {
+    "L1_intent_type": {
+      "purpose": "Main large-scale preannotation target.",
+      "required_fields": ["annotation_status", "intent_type"],
+      "recommended_fields": ["callsign", "raw_span", "note"],
+      "official_metric": "intent_type_micro_f1",
+      "notes": [
+        "Extra predicted intent types count as false positives.",
+        "Missing gold intent types count as false negatives.",
+        "Use this level for current intent-understanding progress reporting."
+      ]
+    },
+    "L2_action": {
+      "purpose": "Action-level annotation inside each intent type.",
+      "required_fields": ["intent_type"],
+      "recommended_fields": ["callsign", "action", "raw_span", "review_required"],
+      "metrics": ["action_accuracy"]
+    },
+    "L3_frame": {
+      "purpose": "Structured digital instruction extraction and downstream execution.",
+      "required_fields": ["callsign", "intent_type", "action"],
+      "slot_policy": "Fill slots when explicitly present or directly inferable. Do not fabricate missing slots.",
+      "metrics": ["slot_accuracy", "frame_accuracy"]
+    }
+  },
+  "field_policy": {
+    "large_scale_preannotation_required": ["annotation_status", "intent_type"],
+    "large_scale_preannotation_recommended": ["callsign", "action", "raw_span", "review_required"],
+    "fill_if_explicit_or_directly_inferable": [
+      "target_value",
+      "unit",
+      "frequency",
+      "runway",
+      "approach_type",
+      "fix",
+      "restriction_type",
+      "report_type",
+      "other_control_subtype"
+    ],
+    "do_not_fabricate_missing_slots": true
+  },
+  "status_values": {
+    "done": "The utterance contains at least one actionable or classifiable ATC/control intent.",
+    "skip": "No actionable/classifiable ATC intent, or the text is too incomplete to judge.",
+    "pending": "Unreviewed sample. Must not be used in final metric denominators."
+  },
+  "intent_types": {
+    "altitude_change": {
+      "actions": ["climb", "descend"],
+      "l1_definition": "Instruction to climb or descend to an altitude.",
+      "boundary": "If climb/descend wording is present, do not add altitude_maintain just because the phrase contains maintain/keep."
+    },
+    "altitude_maintain": {
+      "actions": ["maintain_altitude"],
+      "l1_definition": "Instruction to maintain a specific altitude without climb/descend wording."
+    },
+    "speed_adjust": {
+      "actions": ["reduce_speed", "increase_speed", "set_speed", "maintain_speed"],
+      "l1_definition": "Instruction to set, reduce, increase, or maintain a specific speed."
+    },
+    "speed_procedure": {
+      "actions": ["speed_as_procedure"],
+      "l1_definition": "Instruction to follow normal/procedural speed without a numeric target."
+    },
+    "heading_change": {
+      "actions": ["turn_left_heading", "turn_right_heading", "fly_heading", "maintain_heading", "turn_left_degrees", "turn_right_degrees", "intercept_localizer"],
+      "l1_definition": "Instruction to fly/maintain/intercept a heading or turn by an explicit heading/angle.",
+      "boundary": "Do not mark bare left/right turn for runway exit or taxi unless an explicit heading, angle, or localizer is given."
+    },
+    "direct_to_fix": {
+      "actions": ["direct_to"],
+      "l1_definition": "Instruction to fly direct to a named fix, waypoint, or navaid.",
+      "boundary": "Direct-to-fix has priority over heading_change unless a separate heading is explicitly given."
+    },
+    "approach_clearance": {
+      "actions": ["cleared_approach", "continue_approach"],
+      "l1_definition": "Actual clearance/instruction to perform or continue approach.",
+      "boundary": "Forecasts, questions, and another aircraft's approach are not approach_clearance."
+    },
+    "procedure_assignment": {
+      "actions": ["follow_procedure", "join_procedure"],
+      "l1_definition": "Instruction to follow or join a named procedure, route, SID, STAR, arrival, or departure procedure."
+    },
+    "qnh_setting": {
+      "actions": ["set_qnh"],
+      "l1_definition": "Pressure/QNH setting instruction."
+    },
+    "restriction_cancel": {
+      "actions": ["cancel_altitude_restriction", "cancel_speed_restriction", "cancel_heading_restriction", "cancel_procedure_restriction", "cancel_unspecified_restriction"],
+      "l1_definition": "Instruction to cancel a restriction, offset, or resume own navigation when it cancels a prior constraint."
+    },
+    "frequency_transfer": {
+      "actions": ["contact_frequency"],
+      "l1_definition": "Instruction to contact/switch/transfer to another unit or frequency."
+    },
+    "report_requirement": {
+      "actions": ["report"],
+      "l1_definition": "Explicit requirement for the pilot to report a state, position, readiness, or condition.",
+      "boundary": "A statement that someone has reported something is not a report requirement."
+    },
+    "radar_service": {
+      "actions": ["radar_identified", "radar_service_terminated", "radar_vectoring"],
+      "l1_definition": "Radar identification, radar service termination, or radar vectoring."
+    },
+    "holding_instruction": {
+      "actions": ["hold", "orbit_hold", "expect_hold"],
+      "l1_definition": "Explicit hold/orbit/expect-hold instruction.",
+      "boundary": "A plain 'wait a moment' coordination phrase defaults to other_control."
+    },
+    "weather_deviation": {
+      "actions": ["deviate_weather", "approve_weather_deviation"],
+      "l1_definition": "Weather deviation, weather avoidance, or weather-related offset."
+    },
+    "go_around_or_diversion": {
+      "actions": ["go_around", "divert", "execute_missed_approach"],
+      "l1_definition": "Go-around, diversion, or missed approach instruction."
+    },
+    "landing_clearance": {
+      "actions": ["cleared_to_land"],
+      "l1_definition": "Landing clearance."
+    },
+    "takeoff_or_departure_instruction": {
+      "actions": ["hold_for_takeoff", "cleared_for_takeoff", "departure_climb"],
+      "l1_definition": "Takeoff clearance, runway hold for takeoff, or departure climb instruction."
+    },
+    "traffic_information": {
+      "actions": ["traffic_advisory"],
+      "l1_definition": "Traffic advisory, conflict/situational traffic information, or similar callsign warning."
+    },
+    "confirmation_request": {
+      "actions": ["confirm", "request_information"],
+      "l1_definition": "Controller asks for confirmation, information, or feasibility."
+    },
+    "other_control": {
+      "actions": ["other"],
+      "l1_definition": "Operational/control-related utterance not covered by the specific classes.",
+      "examples": ["okay/approved with unspecified action", "taxi/apron/pushback/tow/parking bay", "expected runway without clearance", "runway crossing", "flow or restriction coordination"]
+    }
+  },
+  "other_control_subtypes": {
+    "ground_movement": "Taxi, vacate, exit runway/taxiway, continue taxi, enter stand/position.",
+    "apron_pushback_tow": "Apron, pushback, startup, tow tractor, parking bay/stand.",
+    "runway_crossing_or_hold_short": "Runway crossing or hold-short instructions that are not takeoff clearance.",
+    "operational_ack_or_approval": "Okay, approved, received, go ahead, or generic controller acknowledgement without a more specific clearance.",
+    "flow_or_restriction_coordination": "Flow, restriction, spacing, influence, cannot cross/cut, or operational coordination.",
+    "expected_information": "Expected runway, expected wait/weather/flow information without explicit clearance or report requirement.",
+    "unclear_control": "Control-related but not stable enough to assign a subtype; must be reviewed."
+  },
+  "conflict_resolution_rules": [
+    "Numeric altitude/speed/heading/frequency/QNH controls take priority over other_control.",
+    "Actual approach/landing/takeoff clearance takes priority over other_control.",
+    "direct_to_fix takes priority over heading_change when a named fix is the target.",
+    "Questions or feasibility checks take confirmation_request before clearance classes.",
+    "Runway or taxiway exit is other_control, not weather_deviation.",
+    "Climb/descend plus maintain is altitude_change only, not an extra altitude_maintain.",
+    "Plain wait-a-moment coordination is other_control; explicit hold/orbit/expect-hold is holding_instruction.",
+    "If the annotator/model cannot make a stable decision, set review_required=true."
+  ],
+  "quality_gates_before_large_scale_annotation": {
+    "prompt_and_schema_encoding_clean": true,
+    "manual_review_sample_size_min": 100,
+    "recommended_gold_size": "300-500 reviewed utterances",
+    "minimum_l1_intent_type_micro_f1_on_reviewed_gold": 0.85,
+    "minimum_l1_precision_on_reviewed_gold": 0.80,
+    "skip_rows_must_be_sample_reviewed": true,
+    "low_frequency_intents_require_review": true,
+    "distribution_shift_report_required_per_batch": true,
+    "minimum_other_control_subtype_coverage": 0.8,
+    "review_required_rows_must_be_separated": true
+  },
+  "review_required_when": [
+    "other_control_subtype is unclear_control",
+    "utterance has three or more intents",
+    "utterance contains ambiguous words such as maintain, continue, possible/can, wait, exit/vacate, expected",
+    "intent type is low frequency in the current reviewed set",
+    "GPT preannotation disagrees with rule or Qwen comparison prediction",
+    "annotation_status is skip"
+  ],
+  "recommended_workflow": [
+    "Generate GPT preannotations.",
+    "Generate rule or Qwen comparison predictions.",
+    "Mark agreement samples as high confidence.",
+    "Send disagreements, skip rows, other_control rows, and low-frequency intents to review.",
+    "Freeze a 300-500 utterance reviewed gold set before reporting final metrics.",
+    "Use unrevised GPT labels only as weak labels or fine-tuning candidates, not final gold."
+  ]
+}

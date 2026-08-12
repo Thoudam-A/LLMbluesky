@@ -1,0 +1,58 @@
+{
+  "config_version": "shanghai_program_aware_policy_v1.2_expanded_v06",
+  "sector_code": "ZSSSAP01",
+  "local_timezone": "Asia/Shanghai",
+  "data": {
+    "train_local_date": "2025-07-01",
+    "test_local_date": "2025-07-02",
+    "step_sec": 4,
+    "positive_state_offset_sec": 4,
+    "maximum_pre_state_age_sec": 8,
+    "train_fraction_of_day": 0.75,
+    "hold_exclusion_sec": 120,
+    "max_hold_samples_per_positive": 5,
+    "minimum_state_altitude_m": 1400,
+    "maximum_state_altitude_m": 6200,
+    "random_seed": 20260802
+  },
+  "candidates": {
+    "altitude_levels_m": [
+      1500, 1800, 2100, 2400, 2700, 3000, 3300, 3600,
+      3900, 4200, 4500, 4800, 5100, 5400, 5700, 6000
+    ],
+    "speed_targets_kt": [180, 210, 230, 250, 260, 270, 280, 290, 300],
+    "minimum_altitude_change_m": 150,
+    "minimum_speed_change_kt": 8,
+    "phase_direction_gate": true
+  },
+  "model": {
+    "type": "sklearn_hist_gradient_boosting_candidate_ranker",
+    "learning_rate": 0.06,
+    "max_iter": 180,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 30,
+    "l2_regularization": 1.0,
+    "hold_state_weight": 0.2,
+    "minimum_sampled_command_precision": 0.8,
+    "maximum_sampled_command_to_positive_ratio": 1.2
+  },
+  "runtime": {
+    "max_non_hold_commands_per_tick": 1,
+    "aircraft_command_cooldown_sec": 60,
+    "same_axis_cooldown_sec": 12,
+    "candidate_fallback_limit": 8,
+    "target_memory_sec": 900
+  },
+  "safety": {
+    "enabled": true,
+    "horizon_sec": 300,
+    "step_sec": 4,
+    "command_delay_sec": 4,
+    "vertical_rate_mps": 10,
+    "speed_acceleration_ktps": 1,
+    "minimum_horizontal_separation_nm": 5,
+    "minimum_vertical_separation_m": 300,
+    "scope": "selected_aircraft_against_all_replay_aircraft",
+    "claim_boundary": "finite-horizon simplified constant-track pairwise check"
+  }
+}

@@ -49,4 +49,13 @@ bluesky_project/data/graphics/world.jpg
 /tests/_evaluation_platform_runs/
 /tests/_tmp_runtime/
 
+# Local documentation scratch file
 git.md
+
+# Externally distributed Shanghai/SEU datasets and trained artifacts
+/datasets/
+/models/
+/experiments/
+/handoff/
+*.joblib
+*.parquet

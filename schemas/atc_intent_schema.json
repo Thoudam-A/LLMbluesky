@@ -1,0 +1,253 @@
+{
+  "description": "Schema for ATC instruction intent parsing evaluation.",
+  "version": "1.2",
+  "input_unit": "utterance",
+  "evaluation_unit": "intent_frame",
+  "official_metric": {
+    "name": "管制意图智能理解准确率",
+    "formula": "correct_intent_frames / evaluated_gold_intent_frames",
+    "official_score": "frame_accuracy",
+    "correct_condition": [
+      "callsign matches after normalization",
+      "intent_type matches exactly",
+      "action matches exactly",
+      "all required slots for the intent_type match after normalization",
+      "conditional required slots match when the condition is triggered by the raw text or gold annotation"
+    ],
+    "excluded_from_denominator": [
+      "annotation_status == skip",
+      "empty intents with no clear control intent",
+      "gold intent marked uncertain"
+    ]
+  },
+  "diagnostic_metrics": {
+    "intent_type_accuracy": "intent_type correct / evaluated_gold_intent_frames",
+    "action_accuracy": "intent_type and action correct / evaluated_gold_intent_frames",
+    "frame_accuracy": "callsign, intent_type, action and required slots all correct / evaluated_gold_intent_frames",
+    "slot_accuracy": "correct slot values / gold frames requiring that slot",
+    "false_positive_count": "prediction frames unmatched to any gold frame",
+    "false_negative_count": "gold frames unmatched by any prediction frame"
+  },
+  "base_fields": {
+    "callsign": "aircraft callsign; inherited across intents in the same utterance when omitted in the raw span",
+    "intent_type": "coarse intent category",
+    "action": "fine-grained action under the intent_type",
+    "target_value": "normalized numeric or symbolic target when applicable",
+    "unit": "m, kt, degree, MHz, hPa, min, etc.",
+    "raw_value": "original value text; used for audit, not strict scoring",
+    "raw_span": "source text span for this intent; used for audit, not strict scoring",
+    "note": "annotation note; not strict scoring"
+  },
+  "intent_types": {
+    "altitude_change": {
+      "actions": ["climb", "descend"],
+      "required_slots": ["callsign", "intent_type", "action", "target_value", "unit"]
+    },
+    "altitude_maintain": {
+      "actions": ["maintain_altitude"],
+      "required_slots": ["callsign", "intent_type", "action", "target_value", "unit"]
+    },
+    "speed_adjust": {
+      "actions": ["reduce_speed", "increase_speed", "set_speed", "maintain_speed"],
+      "required_slots": ["callsign", "intent_type", "action", "target_value", "unit"]
+    },
+    "speed_procedure": {
+      "actions": ["speed_as_procedure"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "heading_change": {
+      "actions": [
+        "turn_left_heading",
+        "turn_right_heading",
+        "fly_heading",
+        "maintain_heading",
+        "turn_left_degrees",
+        "turn_right_degrees",
+        "intercept_localizer"
+      ],
+      "required_slots": ["callsign", "intent_type", "action"],
+      "conditional_required_slots": {
+        "explicit_heading_or_angle": ["target_value", "unit"]
+      }
+    },
+    "direct_to_fix": {
+      "actions": ["direct_to"],
+      "required_slots": ["callsign", "intent_type", "action", "fix"]
+    },
+    "approach_clearance": {
+      "actions": ["cleared_approach", "continue_approach"],
+      "required_slots": ["callsign", "intent_type", "action", "runway", "approach_type"]
+    },
+    "procedure_assignment": {
+      "actions": ["follow_procedure", "join_procedure"],
+      "required_slots": ["callsign", "intent_type", "action"],
+      "conditional_required_slots": {
+        "explicit_procedure": ["procedure"]
+      }
+    },
+    "qnh_setting": {
+      "actions": ["set_qnh"],
+      "required_slots": ["callsign", "intent_type", "action", "target_value", "unit"]
+    },
+    "restriction_cancel": {
+      "actions": [
+        "cancel_altitude_restriction",
+        "cancel_speed_restriction",
+        "cancel_heading_restriction",
+        "cancel_procedure_restriction",
+        "cancel_unspecified_restriction"
+      ],
+      "required_slots": ["callsign", "intent_type", "action", "restriction_type"]
+    },
+    "frequency_transfer": {
+      "actions": ["contact_frequency"],
+      "required_slots": ["callsign", "intent_type", "action", "frequency"]
+    },
+    "report_requirement": {
+      "actions": ["report"],
+      "required_slots": ["callsign", "intent_type", "action", "report_type"]
+    },
+    "radar_service": {
+      "actions": ["radar_identified", "radar_service_terminated", "radar_vectoring"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "holding_instruction": {
+      "actions": ["hold", "orbit_hold", "expect_hold"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "weather_deviation": {
+      "actions": ["deviate_weather", "approve_weather_deviation"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "go_around_or_diversion": {
+      "actions": ["go_around", "divert", "execute_missed_approach"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "landing_clearance": {
+      "actions": ["cleared_to_land"],
+      "required_slots": ["callsign", "intent_type", "action", "runway"]
+    },
+    "takeoff_or_departure_instruction": {
+      "actions": ["hold_for_takeoff", "cleared_for_takeoff", "departure_climb"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "traffic_information": {
+      "actions": ["traffic_advisory"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "confirmation_request": {
+      "actions": ["confirm", "request_information"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    },
+    "other_control": {
+      "actions": ["other"],
+      "required_slots": ["callsign", "intent_type", "action"]
+    }
+  },
+  "normalization": {
+    "digit_map": {
+      "洞": "0",
+      "零": "0",
+      "幺": "1",
+      "一": "1",
+      "两": "2",
+      "二": "2",
+      "三": "3",
+      "四": "4",
+      "五": "5",
+      "六": "6",
+      "拐": "7",
+      "七": "7",
+      "八": "8",
+      "九": "9",
+      "点": "."
+    },
+    "callsign": {
+      "strip_fillers": ["啊", "呃", "嗯", "的"],
+      "case_insensitive": true,
+      "ignore_spaces": true,
+      "keep_readable_chinese_callsign": true
+    },
+    "altitude": {
+      "unit": "m",
+      "examples": {
+        "五百五": "550",
+        "九百": "900",
+        "幺两": "1200",
+        "幺五": "1500",
+        "幺八": "1800",
+        "两幺": "2100",
+        "三六": "3600"
+      }
+    },
+    "speed": {
+      "unit": "kt",
+      "format": "integer knots"
+    },
+    "heading": {
+      "unit": "degree",
+      "format": "three digits, e.g. 090",
+      "equivalent_formats": ["90", "090"]
+    },
+    "frequency": {
+      "unit": "MHz",
+      "format": "decimal string, e.g. 118.1",
+      "equivalent_formats": ["118.10", "118.1"]
+    },
+    "qnh": {
+      "unit": "hPa",
+      "format": "integer hPa"
+    },
+    "runway": {
+      "format": "two digits plus side letter, e.g. 36R",
+      "side_letters": {
+        "右": "R",
+        "左": "L",
+        "中": "C",
+        "right": "R",
+        "left": "L",
+        "center": "C"
+      }
+    },
+    "unit_aliases": {
+      "knots": "kt",
+      "kts": "kt",
+      "knot": "kt",
+      "meters": "m",
+      "meter": "m",
+      "degrees": "degree"
+    }
+  },
+  "scoring": {
+    "matching_scope": "within the same utterance_id only",
+    "matching_priority": [
+      "callsign + intent_type + action",
+      "required slots",
+      "conditional required slots"
+    ],
+    "one_to_one_matching": true,
+    "official_correct_rule": "callsign_match && intent_type_match && action_match && all_required_slots_match",
+    "tolerances": {
+      "heading": "90 and 090 are equivalent after normalization",
+      "frequency": "118.10 and 118.1 are equivalent after normalization",
+      "text_case": "English fields are case-insensitive",
+      "callsign": "spaces and listed filler words are ignored"
+    },
+    "not_tolerated": [
+      "different altitude value",
+      "different speed value",
+      "different frequency value",
+      "different runway side",
+      "different action"
+    ],
+    "error_types": [
+      "missing_intent",
+      "extra_intent",
+      "wrong_callsign",
+      "wrong_intent_type",
+      "wrong_action",
+      "wrong_slot_value",
+      "invalid_schema"
+    ]
+  }
+}

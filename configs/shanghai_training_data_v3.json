@@ -1,0 +1,49 @@
+{
+  "dataset_version": "shanghai_training_data_v3.0",
+  "source_dataset_version": "shanghai_lossless_training_data_v2.0",
+  "local_timezone": "Asia/Shanghai",
+  "development_local_date": "2025-07-01",
+  "reserved_test_local_date": "2025-07-02",
+  "runtime": {
+    "minimum_pyarrow_major": 20
+  },
+  "route": {
+    "eto_stale_tolerance_sec": 60,
+    "maximum_geometric_cross_track_nm": 10,
+    "maximum_geometric_leg_length_nm": 100,
+    "maximum_plan_snapshot_age_sec": 900
+  },
+  "history": {
+    "lookback_sec": 900,
+    "maximum_previous_events": 10,
+    "preserve_full_previous_transcript": true
+  },
+  "traffic": {
+    "preserve_all_causal_relations": true,
+    "include_other_plan_only_when_causally_available": true,
+    "horizontal_conflict_nm": 5,
+    "vertical_conflict_m": 300
+  },
+  "label_semantics": {
+    "speed_above_operator": ">=",
+    "speed_below_operator": "<=",
+    "speed_normal_action": "resume_normal_speed",
+    "speed_default_basis": "controller_speed_unspecified",
+    "explicit_ias_marker": "表速",
+    "vertical_rate_default_unit": "ft/min_assumed"
+  },
+  "training_weights": {
+    "state_tier_a": 1.0,
+    "state_tier_b": 0.5,
+    "state_tier_c": 0.0,
+    "known_modifier_correction_multiplier": 0.8,
+    "non_numeric_categorical_multiplier": 0.7
+  },
+  "forbidden_current_input_fields": [
+    "transcript",
+    "raw_span",
+    "original_action",
+    "original_target_value",
+    "cleared_flight_level"
+  ]
+}

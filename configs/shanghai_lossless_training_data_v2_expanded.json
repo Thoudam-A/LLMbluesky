@@ -1,0 +1,45 @@
+{
+  "dataset_version": "shanghai_lossless_training_data_v2.0",
+  "runtime": {
+    "minimum_pyarrow_major": 20
+  },
+  "sector_code": "ZSSSAP01",
+  "local_timezone": "Asia/Shanghai",
+  "development_local_date": "2025-07-01",
+  "reserved_test_local_date": "2025-07-02",
+  "instruction_families": ["altitude", "speed", "heading"],
+  "state_link": {
+    "desired_pre_command_sec": 4,
+    "tier_a_max_target_delta_sec": 8,
+    "tier_b_max_target_delta_sec": 16,
+    "fallback_max_target_delta_sec": 32
+  },
+  "core_scope": {
+    "inside_sector_only": true,
+    "minimum_altitude_m": 1400,
+    "maximum_altitude_m": 6200
+  },
+  "route": {
+    "maximum_geometric_leg_distance_nm": 50,
+    "waypoint_file": "bluesky_project/data/navdata/waypoints-old.dat",
+    "airport_file": "bluesky_project/data/navdata/airports.dat"
+  },
+  "traffic": {
+    "prediction_horizon_sec": 300,
+    "horizontal_conflict_nm": 5,
+    "vertical_conflict_m": 300,
+    "preserve_all_same_bucket_aircraft": true
+  },
+  "history": {
+    "lookback_sec": 900,
+    "maximum_previous_events": 10,
+    "include_all_instruction_families": true
+  },
+  "label_policy": {
+    "preserve_excluded_events": true,
+    "rule_labels_are_gold": false,
+    "missing_numeric_target_is_audit_only": true,
+    "direction_mismatch_is_weighted_not_dropped": true,
+    "outside_sector_is_boundary_context_not_core": true
+  }
+}

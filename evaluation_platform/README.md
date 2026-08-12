@@ -1,8 +1,8 @@
-# 管制指令模仿精度评估平台
+# 智能空管综合指标评估平台
 
 本模块随 `LLMbluesky` 仓库分发。Web页面负责配置、进度、结果和汇报展示；本地Python服务负责运行冻结回放、指令转换、评分和证据归档；BlueSky/PyQt通过异步事件桥上传结构化仿真事件。
 
-仓库不包含历史管制数据、模型权重或正式指标结果。新用户可以先打开无结果的汇报界面，再配置自己的本地数据运行评估。
+仓库不包含历史管制原始数据、模型权重或逐条正式运行日志。仓库保留2026-08-10聚合结果与平台截图作为可审计汇报快照；新用户仍需配置外部数据和模型才能重新计算正式指标。
 
 ## 1. 克隆后启动
 
@@ -19,6 +19,13 @@
 ```
 
 默认地址：`http://127.0.0.1:8765/`。
+
+先检查仓库中的五项指标实现是否完整：
+
+```powershell
+python -m evaluation_platform.doctor --implementation-only
+python -m unittest discover -s tests -v
+```
 
 启动脚本依次使用：
 
@@ -44,6 +51,9 @@ $env:ATC_MODEL_ROOT='D:\your_atc_models'
 ```
 
 也可以直接在 `catalog.json` 中填写绝对路径。该文件已被 `.gitignore` 排除，不会把个人数据路径上传到GitHub。
+
+团队协作时可改用 `catalog.team.example.json` 和 `ATC_SHARED_ROOT`。外部工件目录结构、SHA256与交接流程见
+`docs/handoff/METRIC_EVALUATION_HANDOFF_20260811.md`。
 
 需要配置的文件：
 
@@ -133,6 +143,13 @@ evaluation_platform/metrics/_template/
 `intent_reference_events.jsonl`保存评分阶段才读取的真实意图，`intent_predictions.jsonl`保存分类结果。
 三者使用相同`event_id`逐条关联；航班对象、意图族、意图类型、动作和已记录目标参数全部正确时，
 该条指令才计为完整意图命中。当前仓库不包含正式配对数据和分类模型结果。
+
+三项H-PPO指标读取`output/H_PPO/<run>/`中的`events.jsonl`以及诊断CSV。
+Git仓库不保存checkpoint、训练输出或正式运行日志。生成新H-PPO日志前，必须通过
+`--checkpoint`提供兼容权重，或者先在本机训练；仅重新评分已有日志时不需要加载权重。
+
+界面中的“已实现”表示评分器和任务编排已通过合成测试，不表示当前机器已经配置正式输入，
+也不表示指标已经得到正式数值。
 
 ## 8. 数据安全与结果边界
 

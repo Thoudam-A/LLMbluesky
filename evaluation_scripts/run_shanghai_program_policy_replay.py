@@ -32,6 +32,7 @@ from shanghai_program_policy import (
     state_features,
 )
 from train_shanghai_program_policy import feature_schema_sha256
+from qwen_candidate_reranker import HttpQwenReranker, PROMPT_VERSION
 
 
 VERSION = "shanghai_program_policy_replay_v1.0"
@@ -43,10 +44,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--replay", type=Path, required=True)
     parser.add_argument("--trajectory-parquet", type=Path, required=True)
     parser.add_argument("--model", type=Path, required=True)
+    parser.add_argument(
+        "--target-model",
+        type=Path,
+        help="Optional positive-command family/target selector; the base model remains the trigger.",
+    )
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output-log", type=Path, required=True)
     parser.add_argument("--local-date")
     parser.add_argument("--decision-threshold", type=float)
+    parser.add_argument(
+        "--qwen-endpoint",
+        help="Optional local Qwen reranker endpoint, for example http://127.0.0.1:8766.",
+    )
+    parser.add_argument("--qwen-timeout-sec", type=float, default=20.0)
+    parser.add_argument("--qwen-top-k", type=int, default=5)
+    parser.add_argument(
+        "--qwen-max-score-gap",
+        type=float,
+        default=0.08,
+        help="Invoke Qwen only when the top-two base candidate scores differ by at most this value.",
+    )
+    parser.add_argument(
+        "--qwen-max-calls",
+        type=int,
+        help="Optional auditable cap for smoke/limited hybrid runs.",
+    )
     parser.add_argument("--start-tick", type=int, default=0)
     parser.add_argument("--max-ticks", type=int)
     return parser.parse_args()
@@ -80,19 +103,21 @@ def load_program_rows(
         & (ds.field("altitude_m") >= minimum_altitude_m)
         & (ds.field("altitude_m") <= maximum_altitude_m)
     )
-    table = dataset.scanner(
+    scanner = dataset.scanner(
         columns=PARQUET_COLUMNS,
         filter=expression,
-        batch_size=65536,
-    ).to_table()
+        batch_size=16384,
+        use_threads=False,
+    )
     best: dict[tuple[str, int], dict[str, Any]] = {}
-    for row in table.to_pylist():
-        key = (str(row["trajectory_id"]), int(row["time_bucket_epoch"]))
-        prior = best.get(key)
-        if prior is None or float(row.get("event_time_epoch") or 0.0) > float(
-            prior.get("event_time_epoch") or 0.0
-        ):
-            best[key] = row
+    for batch in scanner.to_batches():
+        for row in batch.to_pylist():
+            key = (str(row["trajectory_id"]), int(row["time_bucket_epoch"]))
+            prior = best.get(key)
+            if prior is None or float(row.get("event_time_epoch") or 0.0) > float(
+                prior.get("event_time_epoch") or 0.0
+            ):
+                best[key] = row
     return best
 
 
@@ -102,6 +127,37 @@ def percentile(values: list[float], fraction: float) -> float | None:
     ordered = sorted(values)
     index = min(len(ordered) - 1, int((len(ordered) - 1) * fraction))
     return float(ordered[index])
+
+
+def hybrid_candidate_scores(
+    target_bundle: dict[str, Any],
+    state: dict[str, Any],
+    candidates: pd.DataFrame,
+) -> pd.Series:
+    """Score non-HOLD candidates as P(family) * P(target | family)."""
+
+    features = target_bundle["numeric_features"] + target_bundle["categorical_features"]
+    state_frame = pd.DataFrame([{name: state.get(name) for name in features}])
+    family_model = target_bundle["family_model"]
+    family_probabilities = {
+        str(label): float(probability)
+        for label, probability in zip(
+            family_model.classes_, family_model.predict_proba(state_frame)[0]
+        )
+    }
+    target_probabilities: dict[str, dict[str, float]] = {}
+    for family, model in target_bundle["target_models"].items():
+        target_probabilities[family] = {
+            str(label): float(probability)
+            for label, probability in zip(model.classes_, model.predict_proba(state_frame)[0])
+        }
+    return candidates.apply(
+        lambda row: family_probabilities.get(str(row["candidate_kind"]), 0.0)
+        * target_probabilities.get(str(row["candidate_kind"]), {}).get(
+            str(row["candidate_id"]), 0.0
+        ),
+        axis=1,
+    )
 
 
 def valid_traffic_rows(tick: dict[str, Any]) -> list[dict[str, Any]]:
@@ -147,6 +203,23 @@ def main() -> int:
     ) != CATEGORICAL_FEATURES:
         raise SystemExit("model feature lists do not match runtime code")
     pipeline = bundle["pipeline"]
+    target_bundle: dict[str, Any] | None = None
+    if args.target_model is not None:
+        target_bundle = joblib.load(args.target_model)
+        if target_bundle.get("role") != "target_selection_only; trigger remains program_policy_v1.2":
+            raise SystemExit("unsupported target-model role")
+        if target_bundle.get("runtime_candidates") != config.get("candidates"):
+            raise SystemExit("target model/config candidate mismatch")
+    if args.qwen_endpoint and target_bundle is not None:
+        raise SystemExit("--qwen-endpoint and --target-model are mutually exclusive")
+    qwen: HttpQwenReranker | None = None
+    qwen_health: dict[str, Any] | None = None
+    if args.qwen_endpoint:
+        qwen = HttpQwenReranker(args.qwen_endpoint, float(args.qwen_timeout_sec))
+        try:
+            qwen_health = qwen.health()
+        except Exception as exc:
+            raise SystemExit(f"Qwen service health check failed: {exc}") from exc
     threshold = (
         float(args.decision_threshold)
         if args.decision_threshold is not None
@@ -182,6 +255,8 @@ def main() -> int:
     eligible_candidate_count = 0
     safety_checks = 0
     safety_rejections = 0
+    qwen_counts: collections.Counter[str] = collections.Counter()
+    qwen_latencies: list[float] = []
     start_wall = time.perf_counter()
     args.output_log.parent.mkdir(parents=True, exist_ok=True)
 
@@ -237,6 +312,7 @@ def main() -> int:
 
             eligible: list[dict[str, Any]] = []
             audit_aircraft: list[dict[str, Any]] = []
+            qwen_tick_audits: list[dict[str, Any]] = []
             for state_id, group in frame.groupby("state_id", sort=False):
                 state = state_by_id[state_id]
                 callsign = state["callsign"]
@@ -245,11 +321,102 @@ def main() -> int:
                 )
                 non_hold = group[group["candidate_id"] != "HOLD"].copy()
                 non_hold["margin"] = non_hold["candidate_score"] - hold_score
+                trigger_margin = float(non_hold["margin"].max())
+                selection_architecture = "global_candidate_ranker"
+                qwen_audit: dict[str, Any] | None = None
+                if target_bundle is not None and trigger_margin >= threshold:
+                    non_hold["base_candidate_score"] = non_hold["candidate_score"]
+                    non_hold["base_margin"] = non_hold["margin"]
+                    non_hold["candidate_score"] = hybrid_candidate_scores(
+                        target_bundle, state, non_hold
+                    )
+                    non_hold["margin"] = trigger_margin
+                    selection_architecture = "base_trigger_plus_hybrid_family_target"
+                elif qwen is not None and trigger_margin >= threshold:
+                    base_order = non_hold.sort_values(
+                        ["candidate_score", "candidate_id"],
+                        ascending=[False, True],
+                    )
+                    top_k = base_order.head(max(1, int(args.qwen_top_k))).copy()
+                    score_gap = (
+                        float(top_k.iloc[0]["candidate_score"])
+                        - float(top_k.iloc[1]["candidate_score"])
+                        if len(top_k) >= 2
+                        else float("inf")
+                    )
+                    at_call_limit = (
+                        args.qwen_max_calls is not None
+                        and qwen_counts["attempts"] >= int(args.qwen_max_calls)
+                    )
+                    if at_call_limit:
+                        qwen_counts["skipped_call_limit"] += 1
+                    elif score_gap > float(args.qwen_max_score_gap):
+                        qwen_counts["skipped_confident_base"] += 1
+                    else:
+                        qwen_counts["attempts"] += 1
+                        rows = [row.to_dict() for _, row in top_k.iterrows()]
+                        try:
+                            choice = qwen.choose(state, rows)
+                            qwen_counts["successes"] += 1
+                            qwen_latencies.append(choice.latency_sec)
+                            base_top_id = str(top_k.iloc[0]["candidate_id"])
+                            if choice.candidate_id != base_top_id:
+                                qwen_counts["changed_top_candidate"] += 1
+                            non_hold["qwen_priority"] = (
+                                non_hold["candidate_id"].astype(str)
+                                == choice.candidate_id
+                            ).astype(int)
+                            non_hold.loc[
+                                non_hold["candidate_id"].astype(str)
+                                == choice.candidate_id,
+                                "margin",
+                            ] = trigger_margin
+                            selection_architecture = "base_trigger_plus_qwen_reranker"
+                            qwen_audit = {
+                                "status": "success",
+                                "candidate_id": choice.candidate_id,
+                                "base_top_candidate_id": base_top_id,
+                                "reason_codes": list(choice.reason_codes),
+                                "latency_sec": round(choice.latency_sec, 6),
+                                "score_gap": round(score_gap, 6),
+                            }
+                        except Exception as exc:
+                            qwen_counts["failures"] += 1
+                            qwen_counts[f"failure_{type(exc).__name__}"] += 1
+                            qwen_audit = {
+                                "status": "fallback",
+                                "error_type": type(exc).__name__,
+                                "detail": str(exc)[:300],
+                                "score_gap": round(score_gap, 6),
+                            }
+                if qwen_audit is not None:
+                    qwen_tick_audits.append(
+                        {
+                            "callsign": callsign,
+                            "trajectory_id": state["trajectory_id"],
+                            "state_id": state_id,
+                            **qwen_audit,
+                        }
+                    )
+                sort_columns: list[str] = []
+                sort_ascending: list[bool] = []
+                if "qwen_priority" in non_hold.columns:
+                    sort_columns.append("qwen_priority")
+                    sort_ascending.append(False)
+                sort_columns.append("margin")
+                sort_ascending.append(False)
+                sort_columns.extend(["candidate_score", "candidate_id"])
+                sort_ascending.extend([False, True])
                 non_hold.sort_values(
-                    ["margin", "candidate_score", "candidate_id"],
-                    ascending=[False, False, True],
+                    sort_columns,
+                    ascending=sort_ascending,
                     inplace=True,
                 )
+                if target_bundle is not None and trigger_margin >= threshold:
+                    # The target stage emits exactly one candidate per aircraft.
+                    # Safety fallback may still consider another aircraft, but
+                    # it must not turn one trigger into many same-aircraft tries.
+                    non_hold = non_hold.head(1).copy()
                 top = non_hold.head(5)
                 audit_aircraft.append(
                     {
@@ -259,6 +426,15 @@ def main() -> int:
                         "active_leg": state["active_leg"],
                         "next_fix": state["next_fix"],
                         "hold_score": round(hold_score, 6),
+                        **(
+                            {
+                                "trigger_margin": round(trigger_margin, 6),
+                                "selection_architecture": selection_architecture,
+                            }
+                            if target_bundle is not None or qwen is not None
+                            else {}
+                        ),
+                        **({"qwen": qwen_audit} if qwen_audit is not None else {}),
                         "top_non_hold": [
                             {
                                 "candidate_id": str(row["candidate_id"]),
@@ -405,6 +581,7 @@ def main() -> int:
                         ),
                         "safety_result": selected_safety,
                         "checked_candidates": checked_candidates,
+                        "qwen_decisions": qwen_tick_audits,
                         "aircraft_audit_top": sorted(
                             audit_aircraft,
                             key=lambda item: (
@@ -427,6 +604,32 @@ def main() -> int:
     summary = {
         "policy_version": VERSION,
         "model_version": bundle["model_version"],
+        "target_model_version": (
+            target_bundle.get("model_version") if target_bundle is not None else None
+        ),
+        "qwen": {
+            "enabled": qwen is not None,
+            "endpoint": args.qwen_endpoint,
+            "prompt_version": PROMPT_VERSION if qwen is not None else None,
+            "health": qwen_health,
+            "top_k": int(args.qwen_top_k) if qwen is not None else None,
+            "max_score_gap": (
+                float(args.qwen_max_score_gap) if qwen is not None else None
+            ),
+            "max_calls": args.qwen_max_calls,
+            "counts": dict(sorted(qwen_counts.items())),
+            "latency_sec": {
+                "mean": round(statistics.mean(qwen_latencies), 6)
+                if qwen_latencies
+                else None,
+                "median": round(statistics.median(qwen_latencies), 6)
+                if qwen_latencies
+                else None,
+                "p95": round(percentile(qwen_latencies, 0.95), 6)
+                if qwen_latencies
+                else None,
+            },
+        },
         "config_version": config["config_version"],
         "local_date": local_date,
         "reference_hidden": True,
@@ -479,6 +682,12 @@ def main() -> int:
             "trajectory_parquet_sha256": sha256_file(args.trajectory_parquet),
             "model": str(args.model.resolve()),
             "model_sha256": sha256_file(args.model),
+            "target_model": (
+                str(args.target_model.resolve()) if args.target_model is not None else None
+            ),
+            "target_model_sha256": (
+                sha256_file(args.target_model) if args.target_model is not None else None
+            ),
             "config": str(args.config.resolve()),
             "config_sha256": sha256_file(args.config),
             "output_log": str(args.output_log.resolve()),

@@ -47,5 +47,6 @@ bluesky_project/data/graphics/world.jpg
 /evaluation_data/
 /evaluation_models/
 /tests/_evaluation_platform_runs/
+/tests/_tmp_runtime/
 
 git.md

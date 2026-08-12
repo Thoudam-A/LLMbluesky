@@ -1,0 +1,32 @@
+{
+  "datasets": [
+    {
+      "id": "shanghai_approach_2025_07_02",
+      "name": "上海进近 · 团队冻结测试集",
+      "description": "从团队存储下载后按目录模板放置；历史标签只在评分阶段读取",
+      "reference_count": 799,
+      "references": "${ATC_SHARED_ROOT}\\data\\reference_events_2025-07-02.jsonl",
+      "controller_instructions": "${ATC_SHARED_ROOT}\\data\\intent\\controller_instructions.jsonl",
+      "intent_references": "${ATC_SHARED_ROOT}\\data\\intent\\intent_reference_events.jsonl",
+      "replay": "${ATC_SHARED_ROOT}\\data\\shadow_replay_test_2025-07-02.jsonl",
+      "trajectory_parquet": "${ATC_SHARED_ROOT}\\data\\rl_teacher_dataset.parquet",
+      "local_date": "2025-07-02"
+    }
+  ],
+  "models": [
+    {
+      "id": "program_policy_v12_recalibrated",
+      "name": "程序感知策略 v1.2 · Recalibrated",
+      "model": "${ATC_SHARED_ROOT}\\models\\shanghai_program_aware_policy_v12_expanded_20260802_173713.joblib",
+      "config": "${ATC_SHARED_ROOT}\\models\\shanghai_program_aware_policy_v12_expanded.json",
+      "system_outputs": "${ATC_SHARED_ROOT}\\outputs\\test_replay_recalibrated_outputs.jsonl",
+      "archived_metric": "${ATC_SHARED_ROOT}\\outputs\\imitation_metric_result.json",
+      "decision_threshold": 0.28977155469869365
+    },
+    {
+      "id": "intent_classifier_weekly_20260810",
+      "name": "管制意图分类器 · 2026-08-10归档",
+      "intent_predictions": "${ATC_SHARED_ROOT}\\outputs\\intent_predictions_merged_500.jsonl"
+    }
+  ]
+}

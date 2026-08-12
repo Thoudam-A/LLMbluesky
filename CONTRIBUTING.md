@@ -32,9 +32,27 @@
 - 安全验证失败时不得展示为可执行指令；
 - GUI fallback 不能替代 headless safety evidence。
 
-## Evaluation Metrics
+## 评估指标扩展
 
-Add a metric as an isolated directory under `evaluation_platform/metrics/`.
-Each metric must declare its inputs and claim boundary in `manifest.json`, write
-its results to disk, and include success, empty-input, and failure tests.
-Do not commit local catalogs, datasets, model weights, or evaluation outputs.
+当前平台已经实现五个指标插件：管制指令模仿精度、动态间隔调整成功率、
+管制指令执行接受度、管制指令自主生成响应时间和管制意图智能理解准确率。
+“已实现”只表示评分器、任务编排和合成测试可用；只有本机输入校验通过的指标才能启动正式运行。
+
+新增或修改指标时：
+
+1. 复制 `evaluation_platform/metrics/_template`；
+2. 使用唯一 `metric_id`；
+3. 声明输入字段、主指标和结果边界；
+4. runner/scorer必须输出落盘JSON，不从界面控件读取数据；
+5. 添加成功、空输入和失败状态测试；
+6. 不提交数据集、模型权重或本地 `catalog.json`。
+
+未完成运行器、评分器和测试的指标不得在界面中显示为可运行。
+
+## H-PPO集成边界
+
+- H-PPO只在`bluesky_project/routes/hppo/`中的有限场景完成迁移；
+- 不得同时启动H-PPO控制和原动态扇区自动求解器；
+- checkpoint、训练输出和运行日志不得提交到Git；
+- H-PPO评估必须显式提供兼容checkpoint，或者先完成本地训练；
+- 三项H-PPO指标只评价已落盘日志，不构成真实运行安全或人因接受度证明。

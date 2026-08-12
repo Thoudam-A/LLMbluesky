@@ -16,8 +16,17 @@ python .\hppo_tools\run_hppo_target.py eval `
   --output .\output\H_PPO\evaluation_candidate_v2
 ```
 
-The bundled checkpoint is used by default. It is compatible with a 60-dimensional
-local observation, 26-dimensional global slots and a six-candidate pool.
+Model checkpoints are intentionally not stored in Git. By default the command
+looks for:
+
+```text
+artifacts/hppo/checkpoints/hppo_candidate_selector_v2_curriculum.pt
+```
+
+Place a compatible local checkpoint there or pass `--checkpoint <path>`.
+Without one, evaluation exits before BlueSky starts. The checkpoint must match
+the 60-dimensional local observation, 26-dimensional global slots and
+six-candidate pool used by this runtime.
 
 ## Training
 
@@ -62,3 +71,14 @@ validated for the UI's dynamic Chengdu-Chongqing sector: that sector has
 different traffic generation, route semantics and altitude ranges, so it
 requires a dedicated adapter plus retraining before controller commands may
 be enabled there.
+
+## Evaluation-platform inputs
+
+The three H-PPO metric plug-ins read immutable files under
+`output/H_PPO/<run>/`:
+
+- `events.jsonl` for separation-change and command-acceptance scoring;
+- `validation_diagnostics.csv` or `training_diagnostics.csv` for response-time
+  and separation-outcome scoring.
+
+These files are local run artifacts and remain excluded from Git.

@@ -1,0 +1,516 @@
+{
+  "bundle_version": "weekly_atc_metrics_v1.0",
+  "report_date": "2026-08-10",
+  "headline": {
+    "controller_imitation_macro_recall": 0.536815,
+    "intent_type_f1": 0.8034188034188033,
+    "full_intent_frame_accuracy": 0.351270553064275
+  },
+  "controller_imitation": {
+    "system": "shanghai_program_policy_v1.2_weekly_20260810",
+    "scope": {
+      "replay_date": "2025-07-02",
+      "processed_ticks": 21600,
+      "historical_states_frozen": true,
+      "reference_hidden_during_decision": true,
+      "reference_scope": "inside_sector",
+      "families": [
+        "altitude",
+        "speed"
+      ],
+      "state_altitude_band_m": [
+        1400.0,
+        6200.0
+      ],
+      "match_window_sec": 60
+    },
+    "counts": {
+      "invalid_reference_rows": 0,
+      "invalid_system_output_rows": 0,
+      "matched_events": 382,
+      "reference_aircraft": 584,
+      "reference_events": 799,
+      "system_outputs": 784,
+      "unmatched_references": 417,
+      "unmatched_system_outputs": 402
+    },
+    "metrics": {
+      "command_inflation_ratio": 0.981227,
+      "controller_imitation_macro_recall": 0.536815,
+      "controller_imitation_micro_recall": 0.478098,
+      "parameter_accuracy_on_comparable_matches": 0.709424,
+      "parameter_comparable_match_count": 382,
+      "strict_parameter_macro_recall": 0.434503,
+      "strict_parameter_matched_count": 281,
+      "strict_parameter_micro_recall": 0.352572,
+      "strict_parameter_reference_count": 797,
+      "system_command_precision": 0.487245
+    },
+    "by_family": {
+      "altitude": {
+        "matched_count": 382,
+        "precision": 0.487245,
+        "recall": 0.521858,
+        "reference_count": 732,
+        "system_output_count": 784
+      },
+      "speed": {
+        "matched_count": 0,
+        "precision": null,
+        "recall": 0.0,
+        "reference_count": 67,
+        "system_output_count": 0
+      }
+    },
+    "runtime_sec": 356.03,
+    "qwen_enabled": false
+  },
+  "intent_understanding": {
+    "scope": {
+      "gold_rows": 500,
+      "prediction_rows": 500,
+      "skipped_gold_rows": 29,
+      "evaluated_gold_intents": 669,
+      "asr_included": false,
+      "reference_note": "固化的500条结构化参考标注；当前证据不能等同于独立人工双盲金标准。"
+    },
+    "metrics": {
+      "intent_type_precision": 0.7171361502347418,
+      "intent_type_recall": 0.9133034379671151,
+      "intent_type_f1": 0.8034188034188033,
+      "utterance_exact_type_set_accuracy": 0.602,
+      "gold_intent_hit_rate": 0.9073243647234679,
+      "action_hit_rate": 0.8714499252615845,
+      "full_intent_frame_accuracy": 0.351270553064275,
+      "false_negative_count": 9,
+      "false_positive_count": 173
+    },
+    "slot_accuracy": {
+      "action": {
+        "total": 660,
+        "correct": 585,
+        "accuracy": 0.8863636363636364
+      },
+      "approach_type": {
+        "total": 21,
+        "correct": 2,
+        "accuracy": 0.09523809523809523
+      },
+      "callsign": {
+        "total": 660,
+        "correct": 508,
+        "accuracy": 0.7696969696969697
+      },
+      "fix": {
+        "total": 10,
+        "correct": 5,
+        "accuracy": 0.5
+      },
+      "frequency": {
+        "total": 91,
+        "correct": 27,
+        "accuracy": 0.2967032967032967
+      },
+      "intent_type": {
+        "total": 660,
+        "correct": 607,
+        "accuracy": 0.9196969696969697
+      },
+      "report_type": {
+        "total": 13,
+        "correct": 1,
+        "accuracy": 0.07692307692307693
+      },
+      "restriction_type": {
+        "total": 8,
+        "correct": 4,
+        "accuracy": 0.5
+      },
+      "runway": {
+        "total": 25,
+        "correct": 10,
+        "accuracy": 0.4
+      },
+      "target_value": {
+        "total": 256,
+        "correct": 81,
+        "accuracy": 0.31640625
+      },
+      "unit": {
+        "total": 256,
+        "correct": 121,
+        "accuracy": 0.47265625
+      }
+    },
+    "per_intent_type": {
+      "altitude_change": {
+        "gold": 153,
+        "intent_type_correct": 151,
+        "action_correct": 151,
+        "frame_correct": 25,
+        "frame_accuracy": 0.16339869281045752
+      },
+      "altitude_maintain": {
+        "gold": 10,
+        "intent_type_correct": 6,
+        "action_correct": 6,
+        "frame_correct": 0,
+        "frame_accuracy": 0.0
+      },
+      "approach_clearance": {
+        "gold": 21,
+        "intent_type_correct": 21,
+        "action_correct": 20,
+        "frame_correct": 0,
+        "frame_accuracy": 0.0
+      },
+      "confirmation_request": {
+        "gold": 32,
+        "intent_type_correct": 27,
+        "action_correct": 21,
+        "frame_correct": 18,
+        "frame_accuracy": 0.5625
+      },
+      "direct_to_fix": {
+        "gold": 12,
+        "intent_type_correct": 8,
+        "action_correct": 8,
+        "frame_correct": 4,
+        "frame_accuracy": 0.3333333333333333
+      },
+      "frequency_transfer": {
+        "gold": 91,
+        "intent_type_correct": 89,
+        "action_correct": 89,
+        "frame_correct": 21,
+        "frame_accuracy": 0.23076923076923078
+      },
+      "heading_change": {
+        "gold": 63,
+        "intent_type_correct": 60,
+        "action_correct": 52,
+        "frame_correct": 18,
+        "frame_accuracy": 0.2857142857142857
+      },
+      "holding_instruction": {
+        "gold": 13,
+        "intent_type_correct": 13,
+        "action_correct": 7,
+        "frame_correct": 4,
+        "frame_accuracy": 0.3076923076923077
+      },
+      "landing_clearance": {
+        "gold": 4,
+        "intent_type_correct": 4,
+        "action_correct": 4,
+        "frame_correct": 1,
+        "frame_accuracy": 0.25
+      },
+      "other_control": {
+        "gold": 73,
+        "intent_type_correct": 46,
+        "action_correct": 46,
+        "frame_correct": 36,
+        "frame_accuracy": 0.4931506849315068
+      },
+      "procedure_assignment": {
+        "gold": 13,
+        "intent_type_correct": 10,
+        "action_correct": 9,
+        "frame_correct": 7,
+        "frame_accuracy": 0.5384615384615384
+      },
+      "qnh_setting": {
+        "gold": 26,
+        "intent_type_correct": 25,
+        "action_correct": 25,
+        "frame_correct": 6,
+        "frame_accuracy": 0.23076923076923078
+      },
+      "radar_service": {
+        "gold": 85,
+        "intent_type_correct": 84,
+        "action_correct": 84,
+        "frame_correct": 70,
+        "frame_accuracy": 0.8235294117647058
+      },
+      "report_requirement": {
+        "gold": 13,
+        "intent_type_correct": 11,
+        "action_correct": 11,
+        "frame_correct": 0,
+        "frame_accuracy": 0.0
+      },
+      "restriction_cancel": {
+        "gold": 8,
+        "intent_type_correct": 7,
+        "action_correct": 6,
+        "frame_correct": 3,
+        "frame_accuracy": 0.375
+      },
+      "speed_adjust": {
+        "gold": 19,
+        "intent_type_correct": 17,
+        "action_correct": 17,
+        "frame_correct": 1,
+        "frame_accuracy": 0.05263157894736842
+      },
+      "speed_procedure": {
+        "gold": 7,
+        "intent_type_correct": 5,
+        "action_correct": 5,
+        "frame_correct": 4,
+        "frame_accuracy": 0.5714285714285714
+      },
+      "takeoff_or_departure_instruction": {
+        "gold": 8,
+        "intent_type_correct": 7,
+        "action_correct": 7,
+        "frame_correct": 5,
+        "frame_accuracy": 0.625
+      },
+      "traffic_information": {
+        "gold": 14,
+        "intent_type_correct": 12,
+        "action_correct": 12,
+        "frame_correct": 10,
+        "frame_accuracy": 0.7142857142857143
+      },
+      "weather_deviation": {
+        "gold": 4,
+        "intent_type_correct": 4,
+        "action_correct": 3,
+        "frame_correct": 2,
+        "frame_accuracy": 0.5
+      }
+    },
+    "type_set_per_intent_type": {
+      "altitude_change": {
+        "tp": 152,
+        "fp": 14,
+        "fn": 1,
+        "precision": 0.9156626506024096,
+        "recall": 0.9934640522875817,
+        "f1": 0.9529780564263324
+      },
+      "altitude_maintain": {
+        "tp": 6,
+        "fp": 14,
+        "fn": 4,
+        "precision": 0.3,
+        "recall": 0.6,
+        "f1": 0.4
+      },
+      "approach_clearance": {
+        "tp": 21,
+        "fp": 13,
+        "fn": 0,
+        "precision": 0.6176470588235294,
+        "recall": 1.0,
+        "f1": 0.7636363636363637
+      },
+      "confirmation_request": {
+        "tp": 27,
+        "fp": 6,
+        "fn": 5,
+        "precision": 0.8181818181818182,
+        "recall": 0.84375,
+        "f1": 0.8307692307692308
+      },
+      "direct_to_fix": {
+        "tp": 8,
+        "fp": 9,
+        "fn": 4,
+        "precision": 0.47058823529411764,
+        "recall": 0.6666666666666666,
+        "f1": 0.5517241379310345
+      },
+      "frequency_transfer": {
+        "tp": 89,
+        "fp": 3,
+        "fn": 2,
+        "precision": 0.967391304347826,
+        "recall": 0.978021978021978,
+        "f1": 0.9726775956284153
+      },
+      "heading_change": {
+        "tp": 60,
+        "fp": 42,
+        "fn": 3,
+        "precision": 0.5882352941176471,
+        "recall": 0.9523809523809523,
+        "f1": 0.7272727272727274
+      },
+      "holding_instruction": {
+        "tp": 13,
+        "fp": 28,
+        "fn": 0,
+        "precision": 0.3170731707317073,
+        "recall": 1.0,
+        "f1": 0.48148148148148145
+      },
+      "landing_clearance": {
+        "tp": 4,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "other_control": {
+        "tp": 47,
+        "fp": 40,
+        "fn": 26,
+        "precision": 0.5402298850574713,
+        "recall": 0.6438356164383562,
+        "f1": 0.5875
+      },
+      "procedure_assignment": {
+        "tp": 10,
+        "fp": 10,
+        "fn": 3,
+        "precision": 0.5,
+        "recall": 0.7692307692307693,
+        "f1": 0.6060606060606061
+      },
+      "qnh_setting": {
+        "tp": 26,
+        "fp": 7,
+        "fn": 0,
+        "precision": 0.7878787878787878,
+        "recall": 1.0,
+        "f1": 0.8813559322033898
+      },
+      "radar_service": {
+        "tp": 84,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.9882352941176471,
+        "f1": 0.9940828402366864
+      },
+      "radar_vectoring": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null,
+        "f1": null
+      },
+      "report_requirement": {
+        "tp": 11,
+        "fp": 4,
+        "fn": 2,
+        "precision": 0.7333333333333333,
+        "recall": 0.8461538461538461,
+        "f1": 0.7857142857142856
+      },
+      "restriction_cancel": {
+        "tp": 7,
+        "fp": 4,
+        "fn": 1,
+        "precision": 0.6363636363636364,
+        "recall": 0.875,
+        "f1": 0.7368421052631579
+      },
+      "speed_adjust": {
+        "tp": 17,
+        "fp": 5,
+        "fn": 2,
+        "precision": 0.7727272727272727,
+        "recall": 0.8947368421052632,
+        "f1": 0.8292682926829269
+      },
+      "speed_maintain": {
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": null,
+        "f1": null
+      },
+      "speed_procedure": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 2,
+        "precision": 1.0,
+        "recall": 0.7142857142857143,
+        "f1": 0.8333333333333333
+      },
+      "takeoff_or_departure_instruction": {
+        "tp": 7,
+        "fp": 13,
+        "fn": 1,
+        "precision": 0.35,
+        "recall": 0.875,
+        "f1": 0.4999999999999999
+      },
+      "traffic_information": {
+        "tp": 13,
+        "fp": 18,
+        "fn": 1,
+        "precision": 0.41935483870967744,
+        "recall": 0.9285714285714286,
+        "f1": 0.5777777777777778
+      },
+      "weather_deviation": {
+        "tp": 4,
+        "fp": 7,
+        "fn": 0,
+        "precision": 0.36363636363636365,
+        "recall": 1.0,
+        "f1": 0.5333333333333333
+      }
+    },
+    "prediction_merge": {
+      "base_rows": 500,
+      "recovered_rows": 10,
+      "merged_rows": 500,
+      "replaced_utterance_ids": [
+        "atc_000897",
+        "atc_001732",
+        "atc_001838",
+        "atc_001921",
+        "atc_001966",
+        "atc_002450",
+        "atc_002515",
+        "atc_002791",
+        "atc_003794",
+        "atc_004524"
+      ],
+      "inputs": {
+        "base_sha256": "3cc032d93bdf4dc8e697b85d7a04b340eed635a39e49e52f298faa80025bbf43",
+        "recovered_sha256": "41d612778c401f6d7ef962c0cfc4d7b66f3f4ecd6edbe909de5449f499a33b15"
+      },
+      "output_sha256": "c6e3d135fbd7e311f62d2914cb3edceb3b300719270c0a0c4c08b8c01467e766"
+    }
+  },
+  "evidence": {
+    "imitation_metric": {
+      "sha256": "254229f70df564e37bd5a5f9891c3f1852dd5a0f6ee8d8c36e0bbc73036102f7",
+      "size_bytes": 517052
+    },
+    "intent_merge_manifest": {
+      "sha256": "856eb8f9ff178e2a533bb307e93c0330cfcceca5f1b445d1d118b6ce9fd3485d",
+      "size_bytes": 589
+    },
+    "intent_metric": {
+      "sha256": "3471a01c6588807e83aa8b89ec0784179e5f6418534c4a0b163afe0aea3fed27",
+      "size_bytes": 554353
+    },
+    "intent_type_set_metric": {
+      "sha256": "0613df9260ec370775def79c3074555b1c6eda83f51722769cc6172324e97e12",
+      "size_bytes": 83710
+    },
+    "replay_summary": {
+      "sha256": "6d16eb9b67e7fd19db44857b22ddf42900b7ed34e9adc343ce04e74689f34419",
+      "size_bytes": 3445
+    }
+  },
+  "claim_boundaries": [
+    "模仿精度是冻结历史态势离线回放的一致性，不是真实同场景复现或运行安全证明。",
+    "意图类型准确率衡量大类识别；完整意图框架准确率还要求动作与必需参数槽位正确。",
+    "意图类型F1同时惩罚漏检和多报；90.73%的参考意图命中率不惩罚额外预测，不能单独作为正式准确率。",
+    "意图评估不包含语音识别误差，参考标注尚不能宣称为独立人工双盲金标准。"
+  ]
+}

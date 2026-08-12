@@ -75,11 +75,11 @@
         <div class="catalog-head"><span class="eyebrow">METRIC REGISTRY</span><h2>评估指标库</h2><p>统一数据、运行、评分与证据接口，支持指标持续扩展。</p></div>
         <div class="suite">
           <div class="group-title"><span>当前已注册</span><em>5 / 5</em></div>
-          <button class="metric-item" data-metric-link="controller_imitation" type="button"><span class="mi-icon">IM</span><span><strong>管制指令模仿精度</strong><small>历史态势冻结回放</small></span><span class="tag">可运行</span></button>
-          <button class="metric-item" data-metric-link="dynamic_separation_adjustment" type="button"><span class="mi-icon">DS</span><span><strong>动态间隔调整成功率</strong><small>H-PPO 运行日志离线评分</small></span><span class="tag">可运行</span></button>
-          <button class="metric-item" data-metric-link="command_execution_acceptance" type="button"><span class="mi-icon">CA</span><span><strong>管制指令执行接受度</strong><small>BlueSky 指令执行日志</small></span><span class="tag">可运行</span></button>
-          <button class="metric-item" data-metric-link="autonomous_command_response_time" type="button"><span class="mi-icon">RT</span><span><strong>管制指令自主生成响应时间</strong><small>H-PPO 诊断日志加权统计</small></span><span class="tag">可运行</span></button>
-          <button class="metric-item" data-metric-link="controller_intent_understanding_accuracy" type="button"><span class="mi-icon">IU</span><span><strong>管制意图智能理解准确率</strong><small>管制指令分类与历史意图对照</small></span><span class="tag">可运行</span></button>
+          <button class="metric-item" data-metric-link="controller_imitation" type="button"><span class="mi-icon">IM</span><span><strong>管制指令模仿精度</strong><small>历史态势冻结回放</small></span><span class="tag">已实现</span></button>
+          <button class="metric-item" data-metric-link="dynamic_separation_adjustment" type="button"><span class="mi-icon">DS</span><span><strong>动态间隔调整成功率</strong><small>H-PPO 运行日志离线评分</small></span><span class="tag">已实现</span></button>
+          <button class="metric-item" data-metric-link="command_execution_acceptance" type="button"><span class="mi-icon">CA</span><span><strong>管制指令执行接受度</strong><small>BlueSky 指令执行日志</small></span><span class="tag">已实现</span></button>
+          <button class="metric-item" data-metric-link="autonomous_command_response_time" type="button"><span class="mi-icon">RT</span><span><strong>管制指令自主生成响应时间</strong><small>H-PPO 诊断日志加权统计</small></span><span class="tag">已实现</span></button>
+          <button class="metric-item" data-metric-link="controller_intent_understanding_accuracy" type="button"><span class="mi-icon">IU</span><span><strong>管制意图智能理解准确率</strong><small>管制指令分类与历史意图对照</small></span><span class="tag">已实现</span></button>
           <div class="extension-note"><b>指标扩展区</b>基于当前已落盘的数据契约扩展复合指标；评分过程不引入运行时未记录变量。</div>
         </div>
         <button class="addmetric" id="addMetric">＋ 注册新指标</button>
@@ -277,6 +277,52 @@
       const rows=(data.matches||[]).slice(0,6);document.getElementById('matchRows').innerHTML=rows.map(row=>`<tr><td>${esc(row.callsign)}</td><td>${target({action:row.reference_action,target_value:row.reference_target,unit:row.reference_unit})}</td><td>${target({action:row.prediction_action,target_value:row.prediction_target,unit:row.prediction_unit})}</td><td>+${Number(row.time_delta_sec).toFixed(1)}s</td><td>${familyNames[row.intent_family]||esc(row.intent_family)} · 冻结态势</td><td><span class="pill ${row.parameter_match?'hit':'loose'}">${row.parameter_match?'严格命中':'类型命中'}</span></td></tr>`).join('')||'<tr><td colspan="6">暂无匹配明细</td></tr>';
     }
   }
+  async function loadWeeklyReportIfRequested(){
+    const reportId=new URLSearchParams(location.search).get('weekly');
+    if(reportId!=='20260810')return;
+    try{
+      const weekly=await api('/weekly_metrics_20260810.json');
+      document.getElementById('runStatus').textContent='● 本次评估完成 · 结果已固化';
+      if(currentMetric==='controller_imitation'){
+        const d=weekly.controller_imitation,m=d.metrics,c=d.counts;
+        renderResult(d,'WEEKLY-20260810-IMITATION');
+        document.getElementById('macroLabel').textContent='系统指令精度 · 汇报指标';
+        document.getElementById('macroValue').textContent=pct(m.system_command_precision);
+        document.getElementById('macroNote').textContent='匹配指令数 / 系统输出数';
+        document.getElementById('precisionLabel').textContent='模仿宏平均召回';
+        document.getElementById('precisionValue').textContent=pct(m.controller_imitation_macro_recall);
+        document.getElementById('precisionCount').textContent=`${c.matched_events} 条命中 / ${c.reference_events} 条参考`;
+        document.getElementById('formulaEquation').innerHTML='P<sub>cmd</sub> = N<sub>match</sub> / N<sub>system</sub>';
+        document.getElementById('formulaText').textContent='系统输出指令中，在同航班、同类型和±60秒窗口内与历史指令完成一对一匹配的比例。';
+        document.getElementById('breakdown').innerHTML=`<div class="barrow"><header><span>高度指令召回</span><b>${pct(d.by_family.altitude.recall)}%</b></header><div class="bar"><i style="width:${pct(d.by_family.altitude.recall)}%"></i></div></div><div class="barrow"><header><span>匹配后参数准确率</span><b>${pct(m.parameter_accuracy_on_comparable_matches)}%</b></header><div class="bar"><i style="width:${pct(m.parameter_accuracy_on_comparable_matches)}%"></i></div></div><div class="barrow"><header><span>速度指令召回</span><b class="bad">${pct(d.by_family.speed.recall)}%</b></header><div class="bar speed"><i style="width:0%"></i></div></div>`;
+        document.getElementById('formulaNote').textContent=`全日回放 21,600 tick：${c.reference_events} 条历史参考、${c.system_outputs} 条系统输出、${c.matched_events} 条匹配。`;
+        document.getElementById('resultBoundary').innerHTML=`<b>结果适用边界</b><br>${esc(weekly.boundaries.controller_imitation)}`;
+        showTab('family');
+      }else if(currentMetric==='controller_intent_understanding_accuracy'){
+        const d=weekly.intent_understanding,m=d.metrics,c=d.counts;
+        const byIntent=Object.fromEntries(Object.entries(d.selected_types).map(([name,row])=>[name,{reference_count:row.reference_count,prediction_count:row.reference_count,type_hit:row.action_hits,full_hit:row.reference_count-row.action_hits,full_accuracy:row.action_accuracy}]));
+        renderResult({primary:{value:m.action_hit_rate},metrics:{intent_type_accuracy:m.intent_type_f1,action_accuracy:m.utterance_exact_type_set_accuracy,parameter_accuracy:m.full_intent_frame_accuracy,semantic_precision:m.intent_type_precision,semantic_f1:m.intent_type_f1,paired_input_coverage:1},counts:{evaluable_events:c.gold_intents,parameter_comparable_events:c.gold_intents,controller_instructions:c.utterances,full_intent_hits:Math.round(m.full_intent_frame_accuracy*c.gold_intents),missing_predictions:0},by_intent_type:byIntent,error_counts:{false_negative:c.false_negatives,false_positive:c.false_positives}},'WEEKLY-20260810-INTENT');
+        document.getElementById('metricSubtitle').textContent='比较500条管制指令的模型结构化输出与固化参考意图标注';
+        document.getElementById('macroLabel').textContent='动作识别准确率 · 汇报指标';
+        document.getElementById('macroNote').textContent='参考意图动作槽位命中率';
+        document.getElementById('precisionLabel').textContent='意图类型 F1';
+        document.getElementById('precisionCount').textContent='同时惩罚漏检与多报';
+        document.getElementById('strictLabel').textContent='话语级类型集合完全正确率';
+        document.getElementById('strictNote').textContent='500 条话语严格判定';
+        document.getElementById('inflationLabel').textContent='完整意图框架准确率';
+        document.getElementById('inflationCount').textContent='类型 + 动作 + 必需参数';
+        document.getElementById('formulaEquation').innerHTML='A<sub>action</sub> = N<sub>action-hit</sub> / N<sub>gold-intent</sub>';
+        document.getElementById('formulaText').textContent='在固化的参考意图中，模型输出动作槽位正确的比例；该口径不代表完整语义框架全部正确。';
+        document.getElementById('breakdown').innerHTML=`<div class="barrow"><header><span>意图类型精确率</span><b>${pct(m.intent_type_precision)}%</b></header><div class="bar"><i style="width:${pct(m.intent_type_precision)}%"></i></div></div><div class="barrow"><header><span>意图类型召回率</span><b>${pct(m.intent_type_recall)}%</b></header><div class="bar"><i style="width:${pct(m.intent_type_recall)}%"></i></div></div><div class="barrow"><header><span>完整意图框架准确率</span><b class="warn">${pct(m.full_intent_frame_accuracy)}%</b></header><div class="bar speed"><i style="width:${pct(m.full_intent_frame_accuracy)}%"></i></div></div>`;
+        document.getElementById('formulaNote').textContent=`评估 ${c.utterances} 条话语、${c.gold_intents} 个参考意图；动作口径与完整框架口径分别报告。`;
+        document.getElementById('resultBoundary').innerHTML=`<b>结果适用边界</b><br>${esc(weekly.boundaries.intent_understanding)}`;
+        setHead('familyHead',['意图类型','参考意图','纳入评估','动作命中','动作错误','动作准确率']);
+        showTab('family');
+      }
+      document.querySelectorAll('.metrics .cardfooter span:last-child').forEach((node,index)=>node.textContent=index===2?'辅助口径':'结果已固化');
+      document.getElementById('runStatus').textContent='● 本次评估完成 · 结果已固化';
+    }catch(e){toast(`本周汇报结果加载失败：${e.message}`)}
+  }
   async function loadPlatform(){
     try{const [health,catalog]=await Promise.all([api('/api/health'),api('/api/catalog')]);
       const configured=!!catalog.configuration?.configured,imitationDatasets=(catalog.datasets||[]).filter(x=>x.available),imitationModels=(catalog.models||[]).filter(x=>x.available),intentDatasets=(catalog.datasets||[]).filter(x=>x.intent_available),intentModelItems=(catalog.models||[]).filter(x=>x.intent_available);service(true,configured?`评估服务就绪 · v${health.version}`:'服务已启动 · 待配置本地数据');
@@ -310,7 +356,7 @@
   document.getElementById('runIntentBtn').onclick=async e=>{const metricId='controller_intent_understanding_accuracy';try{e.currentTarget.disabled=true;e.currentTarget.textContent='正在创建任务';const state=await api('/api/runs',{method:'POST',body:JSON.stringify({metric_id:metricId,dataset_id:document.getElementById('intentDatasetSelect').value,model_id:document.getElementById('intentModelSelect').value})});pollRun(state.run_id,metricId,e.currentTarget)}catch(err){e.currentTarget.disabled=false;e.currentTarget.textContent=runButtonLabel(metricId);toast(err.message)}};
   document.getElementById('addMetric').onclick=()=>toast('复制 metrics/_template 并注册manifest即可接入新指标');
   if(location.hash==='#presentation'){document.getElementById('app').classList.add('presenting');document.getElementById('presentBtn').textContent='× 退出汇报'}
-  applyMetricDefinition();loadPlatform();loadHppoRuns();
+  applyMetricDefinition();loadPlatform();loadHppoRuns();loadWeeklyReportIfRequested();
 </script>
 </body>
 </html>

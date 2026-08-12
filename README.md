@@ -166,9 +166,28 @@ bluesky_project/requirements.txt
 
 建议使用 Python 虚拟环境安装依赖后运行。
 
-## 管制指令模仿精度评估平台
+## 综合指标评估平台
 
-仓库内已包含独立的Web评估入口、本地任务服务、上海进近冻结回放适配、指令序列评分器及PyQt异步事件桥。默认页面不展示历史结果，只有完成一次新评估后才加载该次运行产物。
+仓库内包含独立的Web评估入口、本地任务服务、上海进近冻结回放适配、
+H-PPO日志评分器及PyQt异步事件桥。当前实现五项指标：
+
+- 管制指令模仿精度；
+- 动态间隔调整成功率；
+- 管制指令执行接受度；
+- 管制指令自主生成响应时间；
+- 管制意图智能理解准确率。
+
+页面默认不展示历史数值，只有完成一次新评估后才加载本次运行产物。
+指标代码与合成测试已经接入；正式计算仍需要在本机配置数据、模型输出或H-PPO运行日志。
+
+2026-08-10 已完成管制员指令模仿精度全日冻结回放，以及500条管制话语意图识别结果重算。
+汇总口径、可视化图表和复现说明见
+[`docs/weekly_metrics_20260810/WEEKLY_METRICS_REPORT.md`](docs/weekly_metrics_20260810/WEEKLY_METRICS_REPORT.md)。
+该归档用于本周汇报，不会作为平台默认数值写死在界面中。
+
+供其他成员继续优化的代码入口、数据目录模板、外部工件哈希和优先任务见
+[`docs/handoff/METRIC_EVALUATION_HANDOFF_20260811.md`](docs/handoff/METRIC_EVALUATION_HANDOFF_20260811.md)。
+仓库还保留默认关闭的Qwen候选重排实验扩展；其当前受限实验没有提升模仿精度，不能替代默认基线。
 
 快速启动：
 
@@ -181,4 +200,5 @@ bluesky_project/requirements.txt
 ```text
 evaluation_platform/README.md
 docs/IMITATION_EVALUATION_PLATFORM.md
+docs/MULTI_METRIC_INTEGRATION.md
 ```

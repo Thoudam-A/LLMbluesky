@@ -1,4 +1,4 @@
-"""Fast tensor-level checks for the discrete H-PPO parameter policy.
+r"""Fast tensor-level checks for the discrete H-PPO parameter policy.
 
 Run from the repository root:
     python .\hppo_tools\smoke_discrete_parameters.py

@@ -1,0 +1,56 @@
+{
+  "manifest_version": "atc_metric_handoff_v1.0",
+  "created_at": "2026-08-11",
+  "root_environment_variable": "ATC_SHARED_ROOT",
+  "policy": "Raw voice, raw SQLite, full replay state and model artifacts are distributed through approved team storage, not public GitHub.",
+  "external_artifacts": [
+    {
+      "logical_name": "controller_imitation_references",
+      "relative_path": "data/reference_events_2025-07-02.jsonl",
+      "bytes": 3321509,
+      "sha256": "e351222ca00fc2246c8bd5d774445107a49fefba3baa0507dac7de111d2f85bd",
+      "required_for": ["rescore_existing", "full_replay"]
+    },
+    {
+      "logical_name": "frozen_shadow_replay",
+      "relative_path": "data/shadow_replay_test_2025-07-02.jsonl",
+      "bytes": 295605735,
+      "sha256": "63f2c6da17071e1ba2e0526cd2c3f3f45619b263931e26ed374c7e9ff1e25f52",
+      "required_for": ["full_replay"]
+    },
+    {
+      "logical_name": "trajectory_and_program_table",
+      "relative_path": "data/rl_teacher_dataset.parquet",
+      "bytes": 66103228,
+      "sha256": "752cca8932054b5612f16214dea42986b79932a1a88e38b32186844dbe9b374f",
+      "required_for": ["full_replay", "model_retraining"]
+    },
+    {
+      "logical_name": "program_policy_v12_model",
+      "relative_path": "models/shanghai_program_aware_policy_v12_expanded_20260802_173713.joblib",
+      "bytes": 376767,
+      "sha256": "09b54c0aaad1bc392dc22e69217714b7eea772b19772d6a635c55f28ab1b4382",
+      "required_for": ["full_replay"]
+    },
+    {
+      "logical_name": "program_policy_v12_config",
+      "relative_path": "models/shanghai_program_aware_policy_v12_expanded.json",
+      "bytes": 1816,
+      "sha256": "582a5136f599205d20f834c8b322af8f64cf22f30b0d1983da050f7e74e6c0a7",
+      "required_for": ["full_replay"]
+    },
+    {
+      "logical_name": "baseline_system_outputs",
+      "relative_path": "outputs/test_replay_recalibrated_outputs.jsonl",
+      "bytes": 330890,
+      "sha256": "00e3913c8195302e113dc7f5dd278367531790e8711ee89504f75fbc61456c3d",
+      "required_for": ["rescore_existing"]
+    }
+  ],
+  "source_inventory_not_for_git": {
+    "file_count": 3009,
+    "total_bytes": 6778280825,
+    "contains": ["2997 WAV recordings", "raw_replay.sqlite", "source XML/JSON", "derived Parquet"],
+    "reason": "size, data governance and voice privacy"
+  }
+}

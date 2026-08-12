@@ -138,7 +138,7 @@
           <div class="field"><label><span id="hppoSchemaLabel">响应计时口径</span><span>SCHEMA</span></label><div class="readonly" id="hppoSchemaValue">冲突状态输入后 · 决策与指令生成</div></div>
           <div class="field"><label><span>聚合方式</span><span>SCORER</span></label><div class="readonly" id="hppoScorerValue">按样本数加权均值 · 最大值 · 覆盖率</div></div>
           <div class="lock" id="hppoLock">只读取已落盘的回合诊断字段；不包含冲突检测、调度等待、离线 LLM 和航空器执行时间。</div>
-          <div class="actions"><button class="btn" id="verifyHppoBtn">校验日志</button><button class="btn primary" id="runHppoBtn">启动响应评估</button><button class="btn historical-proxy-btn" id="loadHistoricalProxyBtn" type="button" title="读取本地历史进近数据代理结果，不会重新运行 H-PPO 评估">载入历史数据代理结果</button></div>
+          <div class="actions"><button class="btn" id="verifyHppoBtn">校验日志</button><button class="btn primary" id="runHppoBtn">启动响应评估</button></div>
         </div>
         <div class="runconfig hidden" id="intentRunConfig">
           <div class="field"><label><span>运行方式</span><span>MODE</span></label><div class="readonly">基于分类结果与历史标签重新评分</div></div>
@@ -381,6 +381,5 @@
   if(location.hash==='#presentation'){document.getElementById('app').classList.add('presenting');document.getElementById('presentBtn').textContent='× 退出汇报'}
   applyMetricDefinition();loadPlatform();loadHppoRuns();loadWeeklyReportIfRequested();
 </script>
-<script src="historical_proxy_home.js?v=20260812-2250"></script>
 </body>
 </html>

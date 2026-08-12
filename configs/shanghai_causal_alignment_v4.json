@@ -1,0 +1,29 @@
+{
+  "dataset_version": "shanghai_causal_alignment_v4.0",
+  "source_dataset_version": "shanghai_training_data_v3.0",
+  "input_cutoff_policy": "selected_pre_command_state_time",
+  "local_timezone": "Asia/Shanghai",
+  "flight_plan": {
+    "maximum_eobt_distance_hours": 48,
+    "maximum_future_eobt_hours": 1,
+    "scan_lookback_hours": 72,
+    "prefer_source_ifplid": true
+  },
+  "route": {
+    "at_fix_tolerance_sec": 5,
+    "maximum_causal_plan_age_sec": 86400,
+    "maximum_unbracketed_next_fix_sec": 600,
+    "maximum_geometric_cross_track_nm": 20,
+    "maximum_geometric_leg_length_nm": 100,
+    "maximum_navpoint_distance_nm": 600,
+    "waypoint_file": "bluesky_project/data/navdata/waypoints-old.dat",
+    "airport_file": "bluesky_project/data/navdata/airports.dat"
+  },
+  "sector": {
+    "code_prefix": "ZSSSAP",
+    "source_sector_code": "ZSSSAP01"
+  },
+  "airports": {
+    "local": ["ZSSS", "ZSPD", "ZSPX"]
+  }
+}

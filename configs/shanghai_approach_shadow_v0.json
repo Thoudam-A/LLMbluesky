@@ -1,0 +1,75 @@
+{
+  "config_version": "shanghai_approach_shadow_v0.1",
+  "sector_code": "ZSSSAP01",
+  "sector_name": "上海进近AP01",
+  "projection_center": {
+    "method": "AIXM polygon bounding-box midpoint",
+    "latitude": 30.92095,
+    "longitude": 120.96985
+  },
+  "altitude": {
+    "input_unit": "m",
+    "solver_internal_unit": "ft",
+    "command_unit": "m",
+    "lower_m_exclusive": 0,
+    "upper_m_inclusive": 6000,
+    "candidate_levels_m": [
+      1500,
+      1800,
+      2100,
+      2400,
+      2700,
+      3000,
+      3300,
+      3600,
+      3900,
+      4200,
+      4500,
+      4800,
+      5100,
+      5400,
+      5700,
+      6000
+    ],
+    "vertical_separation_m": 300,
+    "source": "AIXM upper bound plus 2025-07-01 development-set 1400-6200 m observed reference-state band and 300 m level pattern"
+  },
+  "speed": {
+    "input_unit": "m/s",
+    "solver_internal_unit": "kt",
+    "command_unit": "kt",
+    "minimum_kt": 180,
+    "maximum_kt": 300,
+    "candidate_deltas_kt": [
+      -20,
+      20,
+      -30,
+      30
+    ],
+    "source": "2025-07-01 development-set historical command range"
+  },
+  "conflict": {
+    "lookahead_min": 20,
+    "loss_horizontal_nm": 5,
+    "predict_gate_nm": 20,
+    "verify_horizontal_nm": 5,
+    "vertical_separation_m": 300,
+    "verify_step_sec": 2,
+    "search_time_limit_sec": 1
+  },
+  "evaluation": {
+    "frozen_local_date": "2025-07-02",
+    "replay_step_sec": 4,
+    "primary_state_scope": "inside_sector",
+    "sensitivity_state_scope": "sector_context",
+    "primary_intent_families": [
+      "altitude",
+      "speed"
+    ],
+    "match_window_sec": 60,
+    "aircraft_command_cooldown_sec": 60,
+    "pair_retry_interval_sec": 60,
+    "minimum_state_altitude_m": 1400,
+    "maximum_state_altitude_m": 6200
+  }
+}

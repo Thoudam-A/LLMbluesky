@@ -10,8 +10,11 @@
 - LLM 解释层 / OpenAI-compatible mock server
 - Headless smoke validation 入口与结果目录
 - 项目组二次开发所需脚本与文档
+- 上海进近历史指令、航迹和飞行计划的数据构建与模型训练流水线
 
 > 说明：本仓库是协作精简版，已排除运行缓存、大批量 headless 日志、`__pycache__` 和部分大尺寸可再生成资源，便于 GitHub 维护。
+
+上海进近加工数据通过独立交接包分发，仓库只保存可复现代码、配置、Schema和测试。继续优化管制员指令模仿精度前，请先阅读 [`docs/SHANGHAI_DATA_PIPELINE_HANDOFF.md`](docs/SHANGHAI_DATA_PIPELINE_HANDOFF.md)。
 
 仓库保留首次启动所需的 `bluesky_project/data/navdata/apt.zip`。首次运行会自动生成本地导航缓存，耗时通常高于后续启动；生成的缓存不会提交到 Git。
 
@@ -84,6 +87,9 @@ bluesky_project/       # BlueSky GUI/HMI 工程与插件
 docs/                  # 设计文档
 headless_validation/   # Headless 验证入口与结果目录
 llm/                   # 本地 OpenAI-compatible mock server
+scripts/               # 上海进近数据构建、训练、回放和意图识别脚本
+configs/               # 上海进近流水线与模型配置
+schemas/               # 意图识别结构化输出 Schema
 RUN_*.ps1              # Windows PowerShell 启动脚本
 README_DEMO.md         # 原始演示说明
 ```

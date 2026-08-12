@@ -18,7 +18,13 @@ from .catalog import DATASETS, MODELS, REPO_ROOT
 
 
 VALID_MODES = {"archived_result", "rescore_existing", "full_replay"}
-HPPO_METRIC_IDS = {"dynamic_separation_adjustment", "command_execution_acceptance"}
+IMITATION_METRIC_IDS = {"controller_imitation"}
+INTENT_METRIC_IDS = {"controller_intent_understanding_accuracy"}
+HPPO_METRIC_IDS = {
+    "dynamic_separation_adjustment",
+    "command_execution_acceptance",
+    "autonomous_command_response_time",
+}
 HPPO_OUTPUT_ROOT = REPO_ROOT / "output" / "H_PPO"
 
 
@@ -46,11 +52,13 @@ class RunManager:
         metric_id = str(request.get("metric_id", "controller_imitation"))
         if metric_id in HPPO_METRIC_IDS:
             return self._create_hppo_run(metric_id, request)
+        if metric_id in INTENT_METRIC_IDS:
+            return self._create_intent_run(metric_id, request)
         dataset_id = str(request.get("dataset_id", "shanghai_approach_2025_07_02"))
         model_id = str(request.get("model_id", "program_policy_v12_recalibrated"))
         mode = str(request.get("mode", "rescore_existing"))
-        if metric_id != "controller_imitation":
-            raise ValueError("controller_imitation is the only runnable metric in v0.1")
+        if metric_id not in IMITATION_METRIC_IDS:
+            raise ValueError(f"unsupported metric_id: {metric_id}")
         if dataset_id not in DATASETS:
             raise ValueError(f"unknown dataset_id: {dataset_id}")
         if model_id not in MODELS:
@@ -95,6 +103,45 @@ class RunManager:
             "stage": "queued",
             "progress": 0,
             "message": "任务已创建",
+            "created_at": config["created_at"],
+            "updated_at": config["created_at"],
+            "config": config,
+            "result_available": False,
+            "error": None,
+        }
+        with self._lock:
+            self._runs[run_id] = state
+        self._persist_state(run_id)
+        threading.Thread(target=self._execute, args=(run_id,), daemon=True).start()
+        return self.get(run_id)
+
+    def _create_intent_run(self, metric_id: str, request: dict[str, Any]) -> dict[str, Any]:
+        dataset_id = str(request.get("dataset_id", ""))
+        model_id = str(request.get("model_id", ""))
+        if dataset_id not in DATASETS:
+            raise ValueError(f"unknown dataset_id: {dataset_id}")
+        if model_id not in MODELS:
+            raise ValueError(f"unknown model_id: {model_id}")
+        run_id = f"EV-{dt.datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex[:6].upper()}"
+        run_dir = self.output_root / run_id
+        run_dir.mkdir(parents=True)
+        config = {
+            "run_id": run_id,
+            "metric_id": metric_id,
+            "dataset_id": dataset_id,
+            "model_id": model_id,
+            "mode": "rescore_intent_predictions",
+            "created_at": utc_now(),
+        }
+        (run_dir / "run_config.json").write_text(
+            json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        state = {
+            "run_id": run_id,
+            "status": "queued",
+            "stage": "queued",
+            "progress": 0,
+            "message": "意图分类评估任务已创建",
             "created_at": config["created_at"],
             "updated_at": config["created_at"],
             "config": config,
@@ -236,6 +283,9 @@ class RunManager:
             if config["metric_id"] in HPPO_METRIC_IDS:
                 self._execute_hppo_metric(run_id, config)
                 return
+            if config["metric_id"] in INTENT_METRIC_IDS:
+                self._execute_intent_metric(run_id, config)
+                return
             dataset = DATASETS[config["dataset_id"]]
             model = MODELS[config["model_id"]]
             run_dir = self.output_root / run_id
@@ -325,6 +375,60 @@ class RunManager:
         except Exception as exc:  # keep worker failure visible to the UI
             self._set(run_id, status="failed", stage="failed", message="评估失败", error=str(exc))
 
+    def _execute_intent_metric(self, run_id: str, config: dict[str, Any]) -> None:
+        dataset = DATASETS[config["dataset_id"]]
+        model = MODELS[config["model_id"]]
+        run_dir = self.output_root / run_id
+        inputs = {
+            "controller_instructions": dataset.get("controller_instructions"),
+            "intent_reference_events": dataset.get("intent_references"),
+            "intent_predictions": model.get("intent_predictions"),
+        }
+        self._set(run_id, status="running", stage="validating", progress=10, message="正在校验意图分类输入")
+        missing = [role for role, path in inputs.items() if not path or not Path(path).exists()]
+        if missing:
+            raise FileNotFoundError("missing required intent inputs: " + ", ".join(missing))
+        manifest = {
+            "dataset_id": config["dataset_id"],
+            "model_id": config["model_id"],
+            "label_isolation": "intent_reference_events are read only by the scorer",
+            "inputs": [
+                {"role": role, "path": str(Path(path).resolve()), "size": Path(path).stat().st_size}
+                for role, path in inputs.items()
+            ],
+        }
+        (run_dir / "input_manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        scorer = REPO_ROOT / "evaluation_platform" / "metrics" / "controller_intent_understanding" / "scorer.py"
+        self._command(run_id, "scoring", 75, [
+            sys.executable,
+            str(scorer),
+            "--instructions", str(inputs["controller_instructions"]),
+            "--references", str(inputs["intent_reference_events"]),
+            "--predictions", str(inputs["intent_predictions"]),
+            "--output", str(run_dir / "metric_result.json"),
+        ])
+        hashes = {"run_id": run_id, "generated_at": utc_now(), "artifacts": []}
+        for path in sorted(run_dir.iterdir()):
+            if path.is_file() and path.name != "run_state.json":
+                hashes["artifacts"].append({
+                    "name": path.name,
+                    "size": path.stat().st_size,
+                    "sha256": sha256_file(path),
+                })
+        (run_dir / "hashes.json").write_text(
+            json.dumps(hashes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        self._set(
+            run_id,
+            status="complete",
+            stage="complete",
+            progress=100,
+            message="意图分类评估完成",
+            result_available=True,
+        )
+
     def _execute_hppo_metric(self, run_id: str, config: dict[str, Any]) -> None:
         source_run = Path(config["source_run"])
         run_dir = self.output_root / run_id
@@ -346,7 +450,13 @@ class RunManager:
         )
         metric_id = config["metric_id"]
         scorer = REPO_ROOT / "evaluation_platform" / "metrics" / metric_id / "scorer.py"
-        args = [sys.executable, str(scorer), "--events", str(events), "--output", str(run_dir / "metric_result.json")]
+        args = [sys.executable, str(scorer), "--output", str(run_dir / "metric_result.json")]
+        if metric_id == "autonomous_command_response_time":
+            if diagnostics is None:
+                raise FileNotFoundError("response-time scoring requires validation_diagnostics.csv or training_diagnostics.csv")
+            args.extend(["--diagnostics", str(diagnostics)])
+        else:
+            args.extend(["--events", str(events)])
         if metric_id == "dynamic_separation_adjustment":
             if diagnostics is None:
                 raise FileNotFoundError("dynamic separation scoring requires validation_diagnostics.csv or training_diagnostics.csv")

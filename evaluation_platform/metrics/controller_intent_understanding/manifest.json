@@ -1,0 +1,17 @@
+{
+  "metric_id": "controller_intent_understanding_accuracy",
+  "name": "管制意图智能理解准确率",
+  "group": "intent_understanding",
+  "version": "1.0.0",
+  "status": "ready",
+  "primary_metric": "full_intent_frame_accuracy",
+  "runner": "",
+  "scorer": "evaluation_platform/metrics/controller_intent_understanding/scorer.py",
+  "required_inputs": [
+    "controller_instructions",
+    "intent_reference_events",
+    "intent_predictions"
+  ],
+  "views": ["summary", "details", "intent_breakdown", "error_analysis"],
+  "claim_boundary": "以同一事件ID配对的管制指令、历史结构化意图和分类模型输出为依据；衡量文本指令的结构化意图分类准确率，不包含语音识别准确率。"
+}

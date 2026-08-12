@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from evaluation_platform.metrics.command_execution_acceptance.scorer import score as score_acceptance
+from evaluation_platform.metrics.autonomous_command_response_time.scorer import score as score_response
 from evaluation_platform.metrics.dynamic_separation_adjustment.scorer import score as score_separation
 
 
@@ -54,6 +55,36 @@ class HPPOEvaluationMetricTests(unittest.TestCase):
             self.assertEqual(result["status"], "not_evaluable")
             self.assertIsNone(result["primary"]["value"])
 
+    def test_response_time_uses_sample_weighted_episode_means(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            diagnostics = root / "validation_diagnostics.csv"
+            with diagnostics.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=[
+                    "episode", "scenario", "decision_count", "command_executions",
+                    "decision_response_samples", "mean_decision_response_ms", "max_decision_response_ms",
+                ])
+                writer.writeheader()
+                writer.writerow({"episode": 1, "scenario": "S1", "decision_count": 2, "command_executions": 1, "decision_response_samples": 2, "mean_decision_response_ms": 10, "max_decision_response_ms": 15})
+                writer.writerow({"episode": 2, "scenario": "S1", "decision_count": 2, "command_executions": 1, "decision_response_samples": 1, "mean_decision_response_ms": 20, "max_decision_response_ms": 20})
+            result = score_response(diagnostics)
+            self.assertEqual(result["status"], "complete")
+            self.assertAlmostEqual(result["primary"]["value"], 40 / 3, places=6)
+            self.assertEqual(result["metrics"]["max_decision_response_ms"], 20)
+            self.assertEqual(result["metrics"]["response_sample_coverage"], 0.75)
+            self.assertEqual(result["metrics"]["amortized_ms_per_applied_command"], 20)
+
+    def test_response_time_is_not_evaluable_without_samples(self):
+        with tempfile.TemporaryDirectory() as raw:
+            diagnostics = Path(raw) / "training_diagnostics.csv"
+            diagnostics.write_text(
+                "episode,decision_count,command_executions,decision_response_samples,mean_decision_response_ms,max_decision_response_ms\n"
+                "1,3,0,0,0,0\n",
+                encoding="utf-8",
+            )
+            result = score_response(diagnostics)
+            self.assertEqual(result["status"], "not_evaluable")
+            self.assertIsNone(result["primary"]["value"])
 
 if __name__ == "__main__":
     unittest.main()

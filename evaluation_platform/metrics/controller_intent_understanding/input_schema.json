@@ -1,0 +1,19 @@
+{
+  "controller_instructions": {
+    "format": "jsonl",
+    "required": ["event_id", "instruction_text"],
+    "description": "提供给分类模型的管制指令；不得包含真实意图标签。"
+  },
+  "intent_reference_events": {
+    "format": "jsonl",
+    "required": ["event_id", "callsign", "intent_family", "intent_type", "action"],
+    "optional": ["target_value", "unit"],
+    "description": "同一event_id对应的人工确认历史意图，仅在评分阶段读取。"
+  },
+  "intent_predictions": {
+    "format": "jsonl",
+    "required": ["event_id", "callsign", "intent_family", "intent_type", "action"],
+    "optional": ["target_value", "unit"],
+    "description": "分类模型对管制指令的结构化输出。"
+  }
+}

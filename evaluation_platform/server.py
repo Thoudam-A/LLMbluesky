@@ -138,6 +138,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"items": self.server.registry.public_items()})
             if path == "/api/hppo/runs":
                 return self._json({"items": self.server.runs.available_hppo_runs()})
+            if path == "/api/historical-atc-proxy":
+                candidates = sorted(
+                    list(OUTPUT_ROOT.glob("historical_atc_proxy*/historical_atc_proxy_result.json"))
+                    + list(OUTPUT_ROOT.parent.glob("historical_atc_proxy*/historical_atc_proxy_result.json")),
+                    key=lambda item: item.stat().st_mtime,
+                    reverse=True,
+                )
+                if not candidates:
+                    raise FileNotFoundError(
+                        "No historical ATC proxy result found. Run evaluation_scripts/score_historical_atc_proxies.py first."
+                    )
+                payload = json.loads(candidates[0].read_text(encoding="utf-8"))
+                payload["result_path"] = str(candidates[0])
+                return self._json(payload)
             if path == "/api/runs":
                 return self._json({"items": self.server.runs.list_runs()})
             if path == "/api/snapshot":
@@ -199,7 +213,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", f"{content_type}; charset=utf-8" if content_type.startswith("text/") else content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-cache")
+        # The dashboard is edited locally during development. Never reuse an
+        # old HTML/JS bundle, otherwise a new metric control appears only after
+        # users manually force-refresh the browser.
+        self.send_header("Cache-Control", "no-store, max-age=0, must-revalidate")
+        self.send_header("Pragma", "no-cache")
         self.end_headers()
         self.wfile.write(body)
 

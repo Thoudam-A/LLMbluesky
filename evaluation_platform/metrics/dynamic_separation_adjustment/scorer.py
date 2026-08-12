@@ -1,113 +1,119 @@
-"""Score H-PPO runtime horizontal-separation changes from the event log."""
+"""Formal scorer for user-triggered dynamic separation adjustments.
+
+Only runtime ``separation_adjustment_outcome`` events are admissible.  Older
+episode-level logs may still be inspected elsewhere, but must never be used as
+a substitute for a user changing a separation standard during a simulation.
+"""
 
 from __future__ import annotations
 
-import argparse
-import csv
 import json
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
 
-def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
+def _rows(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
         return []
-    rows = []
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
+    result = []
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
-            item = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"{path}:{line_number}: invalid JSON") from exc
-        if isinstance(item, dict):
-            rows.append(item)
-    return rows
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            result.append(row)
+    return result
 
 
-def read_csv(path: Path) -> dict[int, dict[str, str]]:
-    if not path.exists():
-        return {}
-    with path.open("r", encoding="utf-8-sig", newline="") as stream:
-        return {int(row["episode"]): row for row in csv.DictReader(stream) if row.get("episode")}
+def _number(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
-def truthy(row: dict[str, str], key: str) -> bool:
-    return str(row.get(key, "")).strip().lower() in {"1", "true", "yes"}
-
-
-def score(events_path: Path, diagnostics_path: Path) -> dict[str, Any]:
-    diagnostics = read_csv(diagnostics_path)
-    changes = [row for row in read_jsonl(events_path) if row.get("event") == "separation_updated"]
-    details = []
-    category_counts = Counter()
-    for row in changes:
-        episode = int(row.get("episode", -1))
-        old_nm = float(row.get("previous_horizontal_km", 0.0)) / 1.852
-        new_nm = float(row.get("horizontal_km", 0.0)) / 1.852
-        kind = "收紧" if new_nm > old_nm else "放宽" if new_nm < old_nm else "未变化"
-        summary = diagnostics.get(episode, {})
-        eligible = kind != "未变化" and bool(summary)
-        success = eligible and truthy(summary, "safe_success")
-        reason = ""
-        if not summary:
-            reason = "缺少同回合诊断文件"
-        elif not eligible:
-            reason = "间隔值未发生有效变化"
-        elif not success:
-            reason = str(summary.get("reason", "未安全完成"))
-        category_counts[kind] += 1
-        details.append({
-            "episode": episode,
-            "sim_time_s": row.get("sim_time_s"),
-            "source": row.get("source", "runtime"),
-            "old_horizontal_nm": old_nm,
-            "new_horizontal_nm": new_nm,
-            "change_type": kind,
-            "eligible": eligible,
-            "success": success,
-            "reason": reason,
-            "safety_violations": int(float(summary.get("safety_violations", 0) or 0)),
-            "collision_events": int(float(summary.get("collision_events", 0) or 0)),
-        })
-    eligible_rows = [row for row in details if row["eligible"]]
-    success_rows = [row for row in eligible_rows if row["success"]]
-    by_change_type = {}
-    for kind in ("收紧", "放宽"):
-        rows = [row for row in eligible_rows if row["change_type"] == kind]
-        by_change_type[kind] = {
-            "events": len(rows),
-            "successes": sum(row["success"] for row in rows),
-            "success_rate": None if not rows else sum(row["success"] for row in rows) / len(rows),
-        }
-    value = None if not eligible_rows else len(success_rows) / len(eligible_rows)
+def _event_detail(row: dict[str, Any]) -> dict[str, Any]:
+    affected = int(_number(row.get("affected_pair_count", row.get("initial_violation_count", 0))))
+    config_applied = bool(row.get("config_applied", False))
+    recomputed = bool(row.get("detection_recomputed", False))
+    stable = str(row.get("state", "")).upper() == "SUCCESS" and bool(row.get("success", False))
+    secondary = int(_number(row.get("secondary_conflict_count", row.get("secondary_conflicts", 0))))
+    eligible = config_applied and recomputed and affected > 0
+    success = eligible and stable and secondary == 0
     return {
-        "metric_id": "dynamic_separation_adjustment",
-        "status": "complete" if eligible_rows else "not_evaluable",
-        "primary": {"name": "动态间隔调整成功率", "value": value, "unit": "%"},
-        "metrics": {"dynamic_separation_adjustment_success_rate": value},
-        "counts": {
-            "change_events": len(details),
-            "eligible_events": len(eligible_rows),
-            "successful_events": len(success_rows),
-        },
-        "by_change_type": by_change_type,
-        "details": details,
-        "claim_boundary": "初版按一次运行内的水平间隔变更事件评分。成功表示变更后该回合安全结束，未验证整个恢复窗口内的连续稳定达标。",
+        "adjustment_id": row.get("adjustment_id"),
+        "episode": row.get("episode"),
+        "sim_time_s": _number(row.get("sim_time_s")),
+        "old_horizontal_nm": _number(row.get("old_horizontal_nm", row.get("previous_horizontal_nm"))),
+        "new_horizontal_nm": _number(row.get("new_horizontal_nm", row.get("horizontal_nm"))),
+        "old_vertical_ft": _number(row.get("old_vertical_ft", row.get("previous_vertical_ft"))),
+        "new_vertical_ft": _number(row.get("new_vertical_ft", row.get("vertical_ft"))),
+        "old_time_s": _number(row.get("old_time_s", row.get("previous_time_s"))),
+        "new_time_s": _number(row.get("new_time_s", row.get("time_s"))),
+        "change_type": row.get("change_type", "user_adjustment"),
+        "affected_pair_count": affected,
+        "config_applied": config_applied,
+        "detection_recomputed": recomputed,
+        "stable": stable,
+        "secondary_conflict_count": secondary,
+        "response_time_s": row.get("response_time_s"),
+        "eligible": eligible,
+        "success": success,
+        "reason": row.get("reason") or ("stable_compliance" if success else "not_stably_resolved"),
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--events", required=True, type=Path)
-    parser.add_argument("--diagnostics", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    args = parser.parse_args()
-    result = score(args.events, args.diagnostics)
-    args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return 0
+def score(inputs: dict[str, str], output_dir: str | Path | None = None, **_: Any) -> dict[str, Any]:
+    events_path = Path(inputs.get("events") or inputs.get("events_jsonl") or "")
+    outcomes = [
+        _event_detail(row)
+        for row in _rows(events_path)
+        if row.get("event") == "separation_adjustment_outcome" and row.get("adjustment_id")
+    ]
+    eligible = [row for row in outcomes if row["eligible"]]
+    successful = [row for row in eligible if row["success"]]
+    by_type: dict[str, dict[str, Any]] = defaultdict(lambda: {"events": 0, "successes": 0})
+    for row in eligible:
+        bucket = by_type[str(row["change_type"])]
+        bucket["events"] += 1
+        bucket["successes"] += int(row["success"])
+    for bucket in by_type.values():
+        bucket["success_rate"] = bucket["successes"] / bucket["events"] if bucket["events"] else None
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    response_times = [_number(row["response_time_s"]) for row in successful if row.get("response_time_s") is not None]
+    reasons = Counter(row["reason"] for row in outcomes if not row["success"])
+    value = len(successful) / len(eligible) if eligible else None
+    result = {
+        "metric_id": "dynamic_separation_adjustment",
+        "status": "complete" if eligible else "not_evaluable",
+        "primary": {"name": "dynamic_separation_adjustment_success_rate", "value": value, "unit": "ratio"},
+        "metrics": {
+            "dynamic_separation_adjustment_success_rate": value,
+            "formal_dynamic_separation_adjustment_success_rate": value,
+            "stable_compliance_rate": value,
+            "mean_response_time_s": sum(response_times) / len(response_times) if response_times else None,
+            "secondary_conflict_rate": sum(row["secondary_conflict_count"] > 0 for row in eligible) / len(eligible) if eligible else None,
+        },
+        "counts": {
+            "outcome_events": len(outcomes),
+            "change_events": len(outcomes),
+            "eligible_events": len(eligible),
+            "successful_events": len(successful),
+            "formal_eligible_events": len(eligible),
+            "formal_successful_events": len(successful),
+        },
+        "details": outcomes,
+        "by_change_type": dict(by_type),
+        "failure_reasons": [{"reason": key, "count": count} for key, count in reasons.most_common()],
+        "claim_boundary": (
+            "正式动态间隔调整成功率仅统计用户修改间隔标准后产生的运行时审计事件："
+            "配置生效、受影响冲突对已重新检测、在截止时间内稳定满足新标准，并且没有次生冲突。"
+        ),
+    }
+    if output_dir:
+        destination = Path(output_dir)
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result

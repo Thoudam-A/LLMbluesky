@@ -39,7 +39,7 @@ class PortablePlatformTests(unittest.TestCase):
         self.assertIn("m", models)
         self.assertTrue(status["configured"])
 
-    def test_metric_registry_contains_the_five_ready_metrics(self):
+    def test_metric_registry_contains_the_six_ready_metrics(self):
         registry = MetricRegistry(ROOT / "evaluation_platform/metrics")
         registry.load()
         self.assertEqual(
@@ -48,6 +48,7 @@ class PortablePlatformTests(unittest.TestCase):
                 "controller_imitation",
                 "dynamic_separation_adjustment",
                 "command_execution_acceptance",
+                "command_acceptability_proxy",
                 "autonomous_command_response_time",
                 "controller_intent_understanding_accuracy",
             },
@@ -134,6 +135,35 @@ class PortablePlatformTests(unittest.TestCase):
                 state = self._wait(manager, state)
                 self.assertEqual(state["status"], "complete", state.get("error"))
                 self.assertEqual(manager.result(state["run_id"])["primary"]["value"], 12.5)
+            finally:
+                run_manager.HPPO_OUTPUT_ROOT = old_hppo_root
+
+    def test_command_acceptability_proxy_runs_through_hppo_orchestration(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            source = root / "hppo" / "proxy-run"
+            source.mkdir(parents=True)
+            (source / "events.jsonl").write_text(
+                json.dumps({
+                    "event": "action_executed", "episode": 1, "sim_time_s": 1.0,
+                    "acid": "A1", "macro_action": 2, "command": "HDG A1 230",
+                    "command_applied": True, "parameter_target": {"heading_deg": 230.0},
+                    "target_ids": ["A2"], "conflict_severity": 0.8,
+                }) + "\n",
+                encoding="utf-8",
+            )
+            old_hppo_root = run_manager.HPPO_OUTPUT_ROOT
+            try:
+                run_manager.HPPO_OUTPUT_ROOT = root / "hppo"
+                manager = run_manager.RunManager(root / "runs")
+                state = manager.create({
+                    "metric_id": "command_acceptability_proxy",
+                    "source_run": str(source),
+                })
+                state = self._wait(manager, state)
+                self.assertEqual(state["status"], "complete", state.get("error"))
+                result = manager.result(state["run_id"])
+                self.assertEqual(result["counts"]["eligible_commands"], 1)
             finally:
                 run_manager.HPPO_OUTPUT_ROOT = old_hppo_root
 

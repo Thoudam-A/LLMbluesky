@@ -188,6 +188,11 @@ class RuntimeConfig:
     sim_dt: float = 0.05
     state_update_dt: float = 1.0
     decision_dt: float = 5.0
+    # Runtime interval-management audit. These values affect evaluation and
+    # event recording only; they do not alter the policy action space.
+    separation_adjustment_enabled: bool = True
+    separation_adjustment_confirmation_s: float = 30.0
+    separation_adjustment_deadline_s: float = 120.0
     min_command_hold_s: float = 10.0
     emergency_override_enabled: bool = True
     emergency_override_severity: float = 0.9
@@ -322,6 +327,26 @@ def default_config() -> HPPOConfig:
     cfg.runtime.auto_resume_after_clear_s = float(
         os.getenv("HPPO_AUTO_RESUME_AFTER_CLEAR_S", cfg.runtime.auto_resume_after_clear_s)
     )
+    cfg.runtime.separation_adjustment_enabled = os.getenv(
+        "HPPO_SEPARATION_ADJUSTMENT_AUDIT",
+        "1" if cfg.runtime.separation_adjustment_enabled else "0",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    cfg.runtime.separation_adjustment_confirmation_s = float(
+        os.getenv(
+            "HPPO_SEPARATION_ADJUSTMENT_CONFIRMATION_S",
+            cfg.runtime.separation_adjustment_confirmation_s,
+        )
+    )
+    cfg.runtime.separation_adjustment_deadline_s = float(
+        os.getenv(
+            "HPPO_SEPARATION_ADJUSTMENT_DEADLINE_S",
+            cfg.runtime.separation_adjustment_deadline_s,
+        )
+    )
+    if cfg.runtime.separation_adjustment_confirmation_s <= 0.0:
+        raise ValueError("separation adjustment confirmation window must be positive")
+    if cfg.runtime.separation_adjustment_deadline_s < cfg.runtime.separation_adjustment_confirmation_s:
+        raise ValueError("separation adjustment deadline must cover its confirmation window")
     if cfg.runtime.urgent_noop_threshold_s <= 0.0:
         raise ValueError("urgent NO_NEW_COMMAND threshold must be positive")
     if cfg.runtime.auto_resume_after_clear_s < cfg.runtime.decision_dt:

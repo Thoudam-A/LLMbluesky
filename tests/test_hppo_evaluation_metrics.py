@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from evaluation_platform.metrics.command_execution_acceptance.scorer import score as score_acceptance
+from evaluation_platform.metrics.command_acceptability_proxy.scorer import score as score_acceptability_proxy
 from evaluation_platform.metrics.autonomous_command_response_time.scorer import score as score_response
 from evaluation_platform.metrics.dynamic_separation_adjustment.scorer import score as score_separation
 
@@ -52,6 +53,86 @@ class HPPOEvaluationMetricTests(unittest.TestCase):
             diagnostics = root / "validation_diagnostics.csv"
             diagnostics.write_text("episode,safe_success\n1,1\n", encoding="utf-8")
             result = score_separation(events, diagnostics)
+            self.assertEqual(result["status"], "not_evaluable")
+            self.assertIsNone(result["primary"]["value"])
+
+    def test_dynamic_separation_formal_outcome_requires_stable_compliance(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            events = self._events(root, [
+                {
+                    "event": "separation_updated", "episode": 3, "sim_time_s": 12.0,
+                    "adjustment_id": "sep-3-12-1", "config_applied": True,
+                    "previous_horizontal_km": 7.408, "horizontal_km": 9.26,
+                    "affected_pair_count": 1,
+                },
+                {
+                    "event": "separation_adjustment_outcome", "episode": 3, "sim_time_s": 52.0,
+                    "adjustment_id": "sep-3-12-1", "state": "SUCCESS", "success": True,
+                    "reason": "stable_compliance_confirmed", "response_time_s": 40.0,
+                    "stable_for_s": 30.0, "secondary_pair_count": 0,
+                },
+            ])
+            result = score_separation(events)
+            self.assertEqual(result["counts"]["formal_eligible_events"], 1)
+            self.assertEqual(result["metrics"]["formal_dynamic_separation_adjustment_success_rate"], 1.0)
+            self.assertEqual(result["details"][0]["evaluation_level"], "formal")
+
+    def test_dynamic_separation_formal_secondary_conflict_is_not_success(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            events = self._events(root, [
+                {
+                    "event": "separation_updated", "episode": 4, "sim_time_s": 12.0,
+                    "adjustment_id": "sep-4-12-1", "config_applied": True,
+                    "previous_horizontal_km": 7.408, "horizontal_km": 9.26,
+                },
+                {
+                    "event": "separation_adjustment_outcome", "episode": 4, "sim_time_s": 62.0,
+                    "adjustment_id": "sep-4-12-1", "state": "FAILED", "success": False,
+                    "reason": "secondary_conflict_after_adjustment", "secondary_pair_count": 1,
+                },
+            ])
+            result = score_separation(events)
+            self.assertEqual(result["metrics"]["dynamic_separation_adjustment_success_rate"], 0.0)
+            self.assertEqual(result["failure_reasons"][0]["reason"], "secondary_conflict_after_adjustment")
+
+    def test_command_acceptability_proxy_rejects_duplicate_and_scores_safe_command(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            result = score_acceptability_proxy(self._events(root, [
+                {
+                    "event": "action_executed", "episode": 1, "sim_time_s": 10.0,
+                    "acid": "A1", "macro_action": 2,
+                    "command": "HDG A1 230", "command_applied": True,
+                    "parameter_target": {"heading_deg": 230.0},
+                    "target_ids": ["A2"], "conflict_severity": 0.8,
+                },
+                {
+                    "event": "action_executed", "episode": 1, "sim_time_s": 15.0,
+                    "acid": "A1", "macro_action": 2,
+                    "command": "HDG A1 230", "command_applied": True,
+                    "parameter_target": {"heading_deg": 230.0},
+                    "target_ids": ["A2"], "conflict_severity": 0.7,
+                },
+                {
+                    "event": "action_executed", "episode": 1, "sim_time_s": 25.0,
+                    "acid": "A1", "macro_action": 2,
+                    "command": "HDG A1 245", "command_applied": True,
+                    "parameter_target": {"heading_deg": 245.0},
+                    "target_ids": ["A2"], "conflict_severity": 0.3,
+                },
+            ]), None)
+            self.assertEqual(result["counts"]["eligible_commands"], 3)
+            self.assertEqual(result["counts"]["rejected_commands"], 1)
+            self.assertEqual(result["failure_reasons"][0]["reason"], "duplicate_target_within_hold_window")
+
+    def test_command_acceptability_proxy_is_not_evaluable_without_commands(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            result = score_acceptability_proxy(self._events(root, [
+                {"event": "manager_initialized", "episode": 0, "sim_time_s": 0.0},
+            ]), None)
             self.assertEqual(result["status"], "not_evaluable")
             self.assertIsNone(result["primary"]["value"])
 

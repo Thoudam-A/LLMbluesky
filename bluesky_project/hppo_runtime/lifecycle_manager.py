@@ -130,6 +130,8 @@ class TrainingManager:
         self.had_conflict = False
         self.clear_since_s: float | None = None
         self.last_conflict_time_s: float | None = None
+        self.separation_adjustments: dict[str, dict[str, Any]] = {}
+        self.separation_adjustment_sequence = 0
         self.finished = False
         self.stats_file = self.cfg.logging.output_dir / self.cfg.logging.stats_csv
         self.diagnostics_file = self.cfg.logging.output_dir / self.cfg.logging.diagnostics_csv
@@ -156,14 +158,22 @@ class TrainingManager:
 
     def set_horizontal_separation_km(self, horizontal_km: float, source: str = "runtime") -> tuple[float, float]:
         """Update the shared standard used by detection, policy input and reward."""
-        previous, current = self.env.set_horizontal_separation_km(horizontal_km)
         simt = float(getattr(bs.sim, "simt", 0.0))
+        before_states = (
+            self.env.conflict_manager.detect(bs.traf, self.cfg.network.max_aircraft)
+            if len(bs.traf.id) > 0
+            else {}
+        )
+        previous, current = self.env.set_horizontal_separation_km(horizontal_km)
         conflict_states = (
             self.env.conflict_manager.detect(bs.traf, self.cfg.network.max_aircraft)
             if len(bs.traf.id) > 0
             else {}
         )
         self.env.rebaseline_active_command_risk(conflict_states, simt)
+        adjustment = self._begin_separation_adjustment(
+            previous, current, source, simt, before_states, conflict_states,
+        )
         self._save_resolved_config()
         self._event(
             "separation_updated",
@@ -174,8 +184,153 @@ class TrainingManager:
             vertical_ft=self.cfg.separation.vertical_ft,
             temporal_s=self.cfg.separation.temporal_s,
             separation_mode=self.cfg.separation.mode,
+            adjustment_id=adjustment["adjustment_id"],
+            config_applied=True,
+            detection_recomputed=True,
+            affected_pair_count=len(adjustment["pairs"]),
+            initial_violation_count=adjustment["initial_violation_count"],
+            adjustment_state=adjustment["state"],
         )
         return previous, current
+
+    @staticmethod
+    def _risk_pairs(conflict_states: dict) -> dict[tuple[str, str], dict[str, Any]]:
+        """Return only pairs that are risky under the currently active standard."""
+        pairs: dict[tuple[str, str], dict[str, Any]] = {}
+        for acid, state in conflict_states.items():
+            for contact in state.targets:
+                risky = bool(contact.conflict_flag or contact.temporal_conflict or contact.severity > 0.0)
+                if not risky:
+                    continue
+                key = tuple(sorted((str(acid), str(contact.callsign))))
+                current = pairs.get(key)
+                item = {
+                    "current_loss": bool(contact.conflict_flag),
+                    "predicted_conflict": bool(contact.severity > 0.0),
+                    "temporal_conflict": bool(contact.temporal_conflict),
+                    "horizontal_km": float(contact.horiz_km),
+                    "vertical_ft": float(contact.vert_ft),
+                    "predicted_horizontal_km": float(contact.dcpa_km),
+                    "predicted_vertical_ft": float(contact.predicted_vert_ft),
+                    "tcpa_s": float(contact.tcpa_s),
+                    "time_gap_s": float(contact.time_gap_s),
+                }
+                if current is None or item["predicted_horizontal_km"] < current["predicted_horizontal_km"]:
+                    pairs[key] = item
+        return pairs
+
+    def _begin_separation_adjustment(
+        self,
+        previous: float,
+        current: float,
+        source: str,
+        simt: float,
+        before_states: dict,
+        after_states: dict,
+    ) -> dict[str, Any]:
+        """Start a separate, auditable lifecycle for one HSEP configuration change."""
+        for adjustment in list(self.separation_adjustments.values()):
+            self._finish_separation_adjustment(adjustment, simt, "superseded_by_new_adjustment")
+        self.separation_adjustments.clear()
+        self.separation_adjustment_sequence += 1
+        before_pairs = self._risk_pairs(before_states)
+        after_pairs = self._risk_pairs(after_states)
+        pair_keys = sorted(set(before_pairs) | set(after_pairs))
+        changed = abs(float(current) - float(previous)) > 1e-9
+        if not changed:
+            state = "NOT_APPLICABLE"
+        elif not pair_keys:
+            state = "NOT_APPLICABLE"
+        else:
+            state = "OBSERVING"
+        adjustment = {
+            "adjustment_id": f"sep-{self.env.episode_id}-{simt:.3f}-{self.separation_adjustment_sequence}",
+            "episode": int(self.env.episode_id),
+            "source": source,
+            "previous_horizontal_km": float(previous),
+            "horizontal_km": float(current),
+            "separation_mode": str(self.cfg.separation.mode),
+            "pairs": pair_keys,
+            "initial_violation_count": len(after_pairs),
+            "started_s": float(simt),
+            "deadline_s": float(simt + self.cfg.runtime.separation_adjustment_deadline_s),
+            "confirmation_window_s": float(self.cfg.runtime.separation_adjustment_confirmation_s),
+            "clear_since_s": None,
+            "state": state,
+        }
+        if state == "NOT_APPLICABLE":
+            self._finish_separation_adjustment(adjustment, simt, "no_affected_conflict_pair")
+        elif self.cfg.runtime.separation_adjustment_enabled:
+            self.separation_adjustments[adjustment["adjustment_id"]] = adjustment
+        return adjustment
+
+    def _finish_separation_adjustment(self, adjustment: dict[str, Any], simt: float, reason: str) -> None:
+        if adjustment.get("state") in {"SUCCESS", "FAILED", "SUPERSEDED"}:
+            return
+        if reason == "stable_compliance_confirmed":
+            state, success = "SUCCESS", True
+        elif reason == "superseded_by_new_adjustment":
+            state, success = "SUPERSEDED", False
+        else:
+            state, success = ("NOT_APPLICABLE", False) if adjustment["state"] == "NOT_APPLICABLE" else ("FAILED", False)
+        adjustment["state"] = state
+        self._event(
+            "separation_adjustment_outcome",
+            adjustment_id=adjustment["adjustment_id"],
+            source=adjustment["source"],
+            previous_horizontal_km=adjustment["previous_horizontal_km"],
+            horizontal_km=adjustment["horizontal_km"],
+            separation_mode=adjustment["separation_mode"],
+            affected_pairs=[list(pair) for pair in adjustment["pairs"]],
+            initial_violation_count=adjustment["initial_violation_count"],
+            secondary_pair_count=int(adjustment.get("secondary_pair_count", 0)),
+            config_applied=True,
+            state=state,
+            success=success,
+            reason=reason,
+            response_time_s=max(0.0, float(simt) - adjustment["started_s"]),
+            confirmation_window_s=adjustment["confirmation_window_s"],
+            stable_for_s=(0.0 if adjustment["clear_since_s"] is None else max(0.0, float(simt) - adjustment["clear_since_s"])),
+        )
+
+    def _update_separation_adjustments(self, conflict_states: dict, simt: float) -> None:
+        if not self.separation_adjustments:
+            return
+        active_pairs = self._risk_pairs(conflict_states)
+        collision = any(state.collision for state in conflict_states.values())
+        for adjustment_id, adjustment in list(self.separation_adjustments.items()):
+            if collision:
+                self._finish_separation_adjustment(adjustment, simt, "collision_after_adjustment")
+                self.separation_adjustments.pop(adjustment_id, None)
+                continue
+            original_pairs = set(adjustment["pairs"])
+            secondary_pairs = set(active_pairs).difference(original_pairs)
+            adjustment["secondary_pair_count"] = max(
+                int(adjustment.get("secondary_pair_count", 0)), len(secondary_pairs)
+            )
+            remaining = [pair for pair in adjustment["pairs"] if pair in active_pairs]
+            if not remaining:
+                if adjustment["clear_since_s"] is None:
+                    adjustment["clear_since_s"] = float(simt)
+                if float(simt) - adjustment["clear_since_s"] >= adjustment["confirmation_window_s"]:
+                    outcome_reason = (
+                        "secondary_conflict_after_adjustment"
+                        if adjustment["secondary_pair_count"] > 0
+                        else "stable_compliance_confirmed"
+                    )
+                    self._finish_separation_adjustment(adjustment, simt, outcome_reason)
+                    self.separation_adjustments.pop(adjustment_id, None)
+                    continue
+            else:
+                adjustment["clear_since_s"] = None
+            if float(simt) >= adjustment["deadline_s"]:
+                self._finish_separation_adjustment(adjustment, simt, "recovery_deadline_exceeded")
+                self.separation_adjustments.pop(adjustment_id, None)
+
+    def _finalize_separation_adjustments(self, simt: float, episode_reason: str) -> None:
+        for adjustment_id, adjustment in list(self.separation_adjustments.items()):
+            self._finish_separation_adjustment(adjustment, simt, f"episode_finished_{episode_reason}")
+            self.separation_adjustments.pop(adjustment_id, None)
 
     @property
     def needs_spawn(self) -> bool:
@@ -466,6 +621,7 @@ class TrainingManager:
             return
 
         conflict_states = self.env.conflict_manager.detect(bs.traf, self.cfg.network.max_aircraft)
+        self._update_separation_adjustments(conflict_states, simt)
         rewards = self.env.compute_rewards(conflict_states)
         for acid, reward in rewards.items():
             runtime = self.env.runtime.get(acid)
@@ -940,6 +1096,7 @@ class TrainingManager:
     def _finish_episode(self, reason: str, terminated: bool, truncated: bool) -> None:
         if self.phase != EpisodePhase.RUNNING and reason != "spawn_timeout":
             return
+        self._finalize_separation_adjustments(float(getattr(bs.sim, "simt", 0.0)), reason)
         if self.cfg.training:
             self._flush_pending(terminated=terminated, truncated=truncated)
         rollout_size = len(self.agent.buffer)

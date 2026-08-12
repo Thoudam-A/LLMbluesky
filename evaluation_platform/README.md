@@ -129,11 +129,12 @@ POST /api/simulation/sessions/<session_id>/events
 evaluation_platform/metrics/_template/
 ```
 
-每个指标提供唯一manifest、输入契约、runner和scorer。未完成注册的指标不会出现在界面中。平台当前注册五项指标：
+每个指标提供唯一manifest、输入契约、runner和scorer。未完成注册的指标不会出现在界面中。平台当前注册六项指标：
 
 - 管制指令模仿精度；
 - 动态间隔调整成功率；
 - 管制指令执行接受度；
+- 自动化离线管制指令可接受性代理评分；
 - 管制指令自主生成响应时间；
 - 管制意图智能理解准确率。
 
@@ -144,7 +145,7 @@ evaluation_platform/metrics/_template/
 三者使用相同`event_id`逐条关联；航班对象、意图族、意图类型、动作和已记录目标参数全部正确时，
 该条指令才计为完整意图命中。当前仓库不包含正式配对数据和分类模型结果。
 
-三项H-PPO指标读取`output/H_PPO/<run>/`中的`events.jsonl`以及诊断CSV。
+H-PPO运行指标读取`output/H_PPO/<run>/`中的`events.jsonl`以及按指标需要的诊断CSV。`command_execution_acceptance`仅表示BlueSky接口接受情况；`command_acceptability_proxy`使用硬规则、短时风险变化、稳定性和可选回合诊断进行自动化离线可接受性代理评分，不等同于真实管制员或飞行员的人因接受度。该代理评分输出接受、条件接受和拒绝三类结果，并保留逐条原因与动作类型分解。
 Git仓库不保存checkpoint、训练输出或正式运行日志。生成新H-PPO日志前，必须通过
 `--checkpoint`提供兼容权重，或者先在本机训练；仅重新评分已有日志时不需要加载权重。
 

@@ -45,6 +45,7 @@ def main() -> int:
             "controller_imitation",
             "dynamic_separation_adjustment",
             "command_execution_acceptance",
+            "command_acceptability_proxy",
             "autonomous_command_response_time",
             "controller_intent_understanding_accuracy",
         }

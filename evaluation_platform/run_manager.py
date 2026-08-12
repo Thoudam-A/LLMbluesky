@@ -23,6 +23,7 @@ INTENT_METRIC_IDS = {"controller_intent_understanding_accuracy"}
 HPPO_METRIC_IDS = {
     "dynamic_separation_adjustment",
     "command_execution_acceptance",
+    "command_acceptability_proxy",
     "autonomous_command_response_time",
 }
 HPPO_OUTPUT_ROOT = REPO_ROOT / "output" / "H_PPO"
@@ -457,9 +458,10 @@ class RunManager:
             args.extend(["--diagnostics", str(diagnostics)])
         else:
             args.extend(["--events", str(events)])
-        if metric_id == "dynamic_separation_adjustment":
-            if diagnostics is None:
-                raise FileNotFoundError("dynamic separation scoring requires validation_diagnostics.csv or training_diagnostics.csv")
+        if metric_id in {"dynamic_separation_adjustment", "command_acceptability_proxy"} and diagnostics is not None:
+            # Formal interval-adjustment outcomes are self-contained runtime
+            # events. Diagnostics remain useful supporting evidence and are
+            # still consumed when available, but are not a hard prerequisite.
             args.extend(["--diagnostics", str(diagnostics)])
         self._command(run_id, "scoring", 75, args)
         hashes = {"run_id": run_id, "generated_at": utc_now(), "artifacts": []}

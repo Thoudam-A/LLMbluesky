@@ -59,3 +59,6 @@ git.md
 /handoff/
 *.joblib
 *.parquet
+
+# data
+/ATC_processed_data_handoff_20260812/

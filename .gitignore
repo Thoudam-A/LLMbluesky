@@ -61,4 +61,4 @@ git.md
 *.parquet
 
 # data
-/ATC_processed_data_handoff_20260812/
+ATC_processed_data_handoff_20260812/

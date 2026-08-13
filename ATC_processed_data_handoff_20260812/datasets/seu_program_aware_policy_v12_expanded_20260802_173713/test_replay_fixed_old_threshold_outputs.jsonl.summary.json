@@ -1,9 +1,0 @@
-{
-  "converted_command_count": 1118,
-  "converter_version": "decision_log_to_imitation_v0.1",
-  "input": "C:\\Users\\Administrator\\Documents\\research\\datasets\\seu_program_aware_policy_v12_expanded_20260802_173713\\test_replay_fixed_old_threshold_decisions.jsonl",
-  "output": "C:\\Users\\Administrator\\Documents\\research\\datasets\\seu_program_aware_policy_v12_expanded_20260802_173713\\test_replay_fixed_old_threshold_outputs.jsonl",
-  "rejected_command_count": 0,
-  "rejected_output": "C:\\Users\\Administrator\\Documents\\research\\datasets\\seu_program_aware_policy_v12_expanded_20260802_173713\\test_replay_fixed_old_threshold_outputs.jsonl.rejected.jsonl",
-  "replay_start_utc": null
-}

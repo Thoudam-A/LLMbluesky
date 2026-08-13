@@ -1,0 +1,14 @@
+{
+  "metric_id": "command_acceptability_proxy",
+  "name": "自动化离线管制指令可接受性",
+  "group": "command_quality",
+  "version": "0.1.0",
+  "status": "ready",
+  "primary_metric": "offline_command_acceptability_rate",
+  "runner": "",
+  "scorer": "evaluation_platform/metrics/command_acceptability_proxy/scorer.py",
+  "required_inputs": ["hppo_events"],
+  "optional_inputs": ["hppo_episode_diagnostics"],
+  "views": ["summary", "details", "breakdown", "failure_analysis"],
+  "claim_boundary": "自动化离线可接受性代理评分，不等同于真实管制员、飞行员或机组的人因接受度。"
+}

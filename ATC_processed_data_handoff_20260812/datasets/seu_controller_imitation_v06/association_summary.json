@@ -1,0 +1,65 @@
+{
+  "counts": {
+    "eligible_events": 5120,
+    "intent_events_rule_eligible": 5120,
+    "intent_events_total": 8090,
+    "near_duplicate_events_removed": 54,
+    "nearest_state_outside_window": 62,
+    "no_callsign_trajectory": 347,
+    "reference_events_after_role_and_dedup": 2641,
+    "reference_events_by_local_date": {
+      "2025-07-01": 1311,
+      "2025-07-02": 1330
+    },
+    "segments_total": 17950,
+    "segments_with_any_intent": 6923,
+    "segments_with_callsign": 13702,
+    "snapshot_rows_written": 2556,
+    "state_linked": 4711,
+    "unique_reference_callsigns": 1112,
+    "unique_reference_snapshots": 2556
+  },
+  "definition": {
+    "human_ground_truth": false,
+    "primary_role_policy": "controller_candidate only",
+    "reference_event": "rule-valid main maneuver, standardized ICAO callsign, probable controller role, and nearest same-callsign trajectory point within the configured window",
+    "time_alignment": "VAD filename is Asia/Shanghai local time; parquet is UTC; association uses epoch seconds"
+  },
+  "inputs": {
+    "trajectory_parquet": "D:\\ATC_data\\seu_data\\seu_data\\seu_rl_data\\rl_teacher_dataset.parquet",
+    "vad_json": "D:\\ATC_data\\seu_data\\seu_data\\ZSSSAP01_2507_vad.json"
+  },
+  "linked_by_role_rule": {
+    "controller_candidate": 2695,
+    "readback_candidate": 1346,
+    "uncertain": 670
+  },
+  "parameters": {
+    "include_uncertain_role": false,
+    "max_state_delta_sec": 8.0,
+    "snapshot_scope": "all trajectories in the parquet sector-context window"
+  },
+  "pipeline_version": "seu_imitation_link_v0.1",
+  "rates": {
+    "primary_reference_yield_over_vad_segments": 0.147131,
+    "state_association_rate_over_rule_eligible": 0.920117
+  },
+  "reference_by_family": {
+    "altitude": 2440,
+    "heading": 8,
+    "speed": 193
+  },
+  "rule_version": "habit_rule_v0.6",
+  "state_time_delta_sec": {
+    "max": 7.983938,
+    "median": 1.286125,
+    "p90": 2.3145
+  },
+  "warnings": [
+    "speaker_role_rule is heuristic and is not equivalent to controller-verified labeling",
+    "association coverage is not controller-imitation accuracy",
+    "state snapshots are event-context audit artifacts, not a model invocation schedule",
+    "continuous shadow replay must invoke the system on every independent 4-second tick",
+    "the initial rule parser covers the Chinese-language subset; English radiotelephony remains out of scope"
+  ]
+}

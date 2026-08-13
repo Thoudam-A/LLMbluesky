@@ -1,0 +1,13 @@
+{
+  "source": "C:\\Users\\Administrator\\Documents\\research\\datasets\\seu_quality_gated_v6_1\\instruction_bundle_training_records_v6.jsonl",
+  "counts": {
+    "train_core": 1199,
+    "audit_only": 71,
+    "train_weak": 23
+  },
+  "contract": {
+    "train_core": "single action, valid structured label, fresh high CAT062 quality, reliable plan link, no upstream audit issue",
+    "train_weak": "valid but multi-action or quality-weak",
+    "audit_only": "label/state/quality link unsafe"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "command_note": "Regenerate with build_seu_imitation_dataset.py using the parameters in association_summary.json",
+  "output_sha256": {
+    "association_summary.json": "65a9fffecd824e5285a76e62c249a125e405db1eff731f2457558bf7c667b209",
+    "instruction_events.jsonl": "16e5dedcc4c4e8c7ceed48e0b7628160bdae275dcbbeb7ef0133a32275dc90d1",
+    "linked_main_events_all_roles.jsonl": "381ab1f874aa9e493e38596470146fbf6fb3ff86d4207c0975651f86ab23c5fd",
+    "reference_events.jsonl": "a69a0cf8ed434a5af7c884bae9b02d4af5b5160565ce1242aefa86db11ff85b8",
+    "reference_events_2025-07-01.jsonl": "ef3d62a9a120f25448e158209cc6ab67428fe5d3fad83477de7ad8f83bf61fff",
+    "reference_events_2025-07-02.jsonl": "e351222ca00fc2246c8bd5d774445107a49fefba3baa0507dac7de111d2f85bd",
+    "reference_sequences.jsonl": "ec74805b5221996f3ebb0c15ffc7c487dd036cb3c6ea0f2709739e1c8482bb82",
+    "state_snapshots.jsonl": "1da8b612ff20c2b60bb88d16a4f89093bea5548db1f81ef4f2b27119be447df5"
+  },
+  "pipeline_version": "seu_imitation_link_v0.1",
+  "source_sha256": {
+    "D:\\ATC_data\\seu_data\\seu_data\\ZSSSAP01_2507_vad.json": "380e1408d5d9481c9e12162cd7890ef47265c21e7da6cf3d8f215ae1056af322",
+    "D:\\ATC_data\\seu_data\\seu_data\\seu_rl_data\\rl_teacher_dataset.parquet": "752cca8932054b5612f16214dea42986b79932a1a88e38b32186844dbe9b374f"
+  }
+}
